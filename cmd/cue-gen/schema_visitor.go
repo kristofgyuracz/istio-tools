@@ -15,14 +15,129 @@
 package main
 
 import (
+	"log"
 	"strings"
 
 	apiextv1 "k8s.io/apiextensions-apiserver/pkg/apis/apiextensions/v1"
 	"k8s.io/utils/pointer"
 	crdutil "sigs.k8s.io/controller-tools/pkg/crd"
+	crdMarkers "sigs.k8s.io/controller-tools/pkg/crd/markers"
+	"sigs.k8s.io/controller-tools/pkg/markers"
 )
 
-var _ crdutil.SchemaVisitor = &preserveUnknownFieldVisitor{}
+const (
+	kubebuilderMarkerTag = "+kubebuilder"
+)
+
+var (
+	_ crdutil.SchemaVisitor = &preserveUnknownFieldVisitor{}
+	_ crdutil.SchemaVisitor = &formatDescriptionVisitor{}
+	_ crdutil.SchemaVisitor = &applyKubebuilderMarkersVisitor{}
+	_ crdutil.SchemaVisitor = &intOrStringVisitor{}
+)
+
+// a visitor to format field description to a schema
+type formatDescriptionVisitor struct{}
+
+func (v *formatDescriptionVisitor) Visit(schema *apiextv1.JSONSchemaProps) crdutil.SchemaVisitor {
+	if schema == nil {
+		return v
+	}
+
+	schema.Description, _ = parseDescription(schema.Description)
+
+	if strings.HasPrefix(schema.Description, "$hide_from_docs") {
+		schema.Description = ""
+	}
+	if paras := strings.Split(schema.Description, ". "); len(paras) > 0 && paras[0] != "" {
+		schema.Description = paras[0]
+
+		lines := strings.Split(paras[0], "\n")
+		if len(lines) > 0 {
+			descLines := []string{}
+			for _, line := range lines {
+				descLines = append(descLines, line)
+				if line[len(line)-1] == '.' {
+					break
+				}
+			}
+			schema.Description = strings.Join(descLines, "\n")
+		}
+
+		if schema.Description[len(schema.Description)-1] != '.' {
+			schema.Description = schema.Description + "."
+		}
+	}
+
+	return v
+}
+
+// a visitor to mutate intOrString type properties to a schema
+type intOrStringVisitor struct{}
+
+func (v *intOrStringVisitor) Visit(schema *apiextv1.JSONSchemaProps) crdutil.SchemaVisitor {
+	if schema == nil {
+		return v
+	}
+
+	_, intVal := schema.Properties["intVal"]
+	_, strVal := schema.Properties["strVal"]
+
+	if intVal && strVal {
+		schema.Properties = nil
+		schema.Type = ""
+		schema.XIntOrString = true
+		schema.AnyOf = []apiextv1.JSONSchemaProps{
+			{Type: "integer"},
+			{Type: "string"},
+		}
+	}
+
+	return v
+}
+
+// a visitor to apply kubebuilder markers based validations to a schema
+type applyKubebuilderMarkersVisitor struct{}
+
+func (v *applyKubebuilderMarkersVisitor) Visit(schema *apiextv1.JSONSchemaProps) crdutil.SchemaVisitor {
+	if schema == nil {
+		return v
+	}
+
+	_, rawMarkers := parseDescription(schema.Description)
+
+	reg := &markers.Registry{}
+	for _, def := range crdMarkers.AllDefinitions {
+		if err := def.Register(reg); err != nil {
+			log.Printf("could not register marker: %v", err)
+			continue
+		}
+	}
+
+	collector := &markers.Collector{Registry: reg}
+
+	for _, marker := range rawMarkers {
+		def := collector.Lookup(marker, markers.DescribesField)
+		if def == nil {
+			continue
+		}
+		markerValue, err := def.Parse(marker)
+		if err != nil {
+			log.Printf("could not parse marker: %v", err)
+			continue
+		}
+		schemaMarker, isSchemaMarker := markerValue.(crdutil.SchemaMarker)
+		if !isSchemaMarker {
+			continue
+		}
+		err = schemaMarker.ApplyToSchema(schema)
+		if err != nil {
+			log.Printf("could not apply marker: %v", err)
+		}
+	}
+
+	return v
+}
 
 // a visitor to add x-kubernetes-preserve-unknown-field to a schema
 type preserveUnknownFieldVisitor struct {
@@ -60,4 +175,29 @@ func (v *preserveUnknownFieldVisitor) Visit(schema *apiextv1.JSONSchemaProps) cr
 		return &preserveUnknownFieldVisitor{path: strings.Join(p[1:], ".")}
 	}
 	return nil
+}
+
+func parseDescription(desc string) (string, []string) {
+	lines := strings.Split(desc, "\n")
+	outLines := []string{}
+	rawMarkers := []string{}
+	out := true
+	for _, l := range lines {
+		l = strings.Trim(l, " ")
+		if strings.HasPrefix(l, "<!--") {
+			out = false
+		}
+		if strings.HasPrefix(l, enableCRDGenTag) || strings.HasPrefix(l, kubebuilderMarkerTag) {
+			rawMarkers = append(rawMarkers, l)
+			continue
+		}
+		if out && l != "" {
+			outLines = append(outLines, l)
+		}
+		if !out && l == "-->" {
+			out = true
+		}
+	}
+
+	return strings.Join(outLines, "\n"), rawMarkers
 }

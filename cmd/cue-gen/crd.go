@@ -63,6 +63,15 @@ func completeCRD(c *apiextv1.CustomResourceDefinition, versionSchemas map[string
 			}
 		}
 
+		// run schema modifiers
+		for _, visitor := range []crdutil.SchemaVisitor{
+			&applyKubebuilderMarkersVisitor{},
+			&intOrStringVisitor{},
+			&formatDescriptionVisitor{},
+		} {
+			crdutil.EditSchema(j, visitor)
+		}
+
 		version.Schema = &apiextv1.CustomResourceValidation{OpenAPIV3Schema: &apiextv1.JSONSchemaProps{
 			Type: "object",
 			Properties: map[string]apiextv1.JSONSchemaProps{

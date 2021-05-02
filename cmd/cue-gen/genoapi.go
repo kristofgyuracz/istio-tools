@@ -477,30 +477,11 @@ func (x *builder) genOpenAPI(name string, inst *cue.Instance) (*openapi.OrderedM
 
 	gen.DescriptionFunc = func(v cue.Value) string {
 		if *crd {
-			n := strings.Split(inst.ImportPath, "/")
-			l, _ := v.Label()
-			schema := "istio." + n[len(n)-2] + "." + n[len(n)-1] + "." + l
-			if res, ok := frontMatterMap[schema]; ok {
-				return res[0] + " See more details at: " + res[1]
-			}
-			// get the first sentence out of the paragraphs.
+			var t []string
 			for _, doc := range v.Doc() {
-				if doc.Text() == "" {
-					continue
-				}
-				if strings.HasPrefix(doc.Text(), "$hide_from_docs") {
-					return ""
-				}
-				if paras := strings.Split(doc.Text(), "\n"); len(paras) > 0 {
-					words := strings.Split(paras[0], " ")
-					for i, w := range words {
-						if strings.HasSuffix(w, ".") {
-							return strings.Join(words[:i+1], " ")
-						}
-					}
-				}
+				t = append(t, doc.Text())
 			}
-			return ""
+			return strings.Join(t, "\n")
 		}
 		for _, doc := range v.Doc() {
 			if doc.Text() == "" {
