@@ -80,4 +80,7 @@ crd?: {
 
 	// the output filename of the CRDs.
 	filename?: string
+
+	// maximum description length of the fields.
+	maxDescriptionLength?: int
 }

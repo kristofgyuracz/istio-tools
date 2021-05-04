@@ -456,7 +456,7 @@ func (x *builder) genCRD() {
 			versionSchemas[version.Name] = sc
 		}
 
-		completeCRD(v.CustomResourceDefinition, versionSchemas, statusSchema, v.PreserveUnknownFields)
+		completeCRD(v.CustomResourceDefinition, versionSchemas, statusSchema, v.PreserveUnknownFields, x.Crd)
 	}
 
 	x.writeCRDFiles()
@@ -477,7 +477,39 @@ func (x *builder) genOpenAPI(name string, inst *cue.Instance) (*openapi.OrderedM
 
 	gen.DescriptionFunc = func(v cue.Value) string {
 		if *crd {
-			var t []string
+			l, _ := v.Label()
+
+			t := []string{
+				NewCueGenParameterMarker(ImportPathParameter, inst.ImportPath),
+				NewCueGenParameterMarker(PackageNameParameter, inst.PkgName),
+			}
+
+			if strings.HasPrefix(inst.ImportPath, "istio.io/api") {
+				n := strings.Split(inst.ImportPath, "/")
+				if len(n) > 3 {
+					istioPackage := "istio." + n[len(n)-2] + "." + n[len(n)-1] + "." + l
+					t = append(t, NewCueGenParameterMarker(IstioPackageNameParameter, istioPackage))
+				}
+			}
+
+			attr := v.Attribute("protobuf")
+			for i := 0; i >= 0; i++ {
+				attrString, err := attr.String(i)
+				if err != nil {
+					break
+				}
+				if p := strings.SplitN(attrString, "=", 2); len(p) == 2 {
+					p[0] = strings.Trim(strings.Trim(p[0], "("), ")")
+					t = append(t, NewCueGenParameterMarker(ProtoAttributeParameter, fmt.Sprintf("%s:%s", p[0], p[1])))
+				}
+			}
+
+			t = append(t, NewCueGenParameterMarker(FieldNameParameter, l))
+
+			if i, _ := v.Reference(); i != nil && i.ImportPath != "" {
+				t = append(t, NewCueGenParameterMarker(ReferenceImportPathParameter, i.ImportPath))
+			}
+
 			for _, doc := range v.Doc() {
 				t = append(t, doc.Text())
 			}

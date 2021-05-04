@@ -26,7 +26,8 @@ import (
 )
 
 const (
-	kubebuilderMarkerTag = "+kubebuilder"
+	kubebuilderMarkerTag     = "+kubebuilder"
+	cueGenParameterMarkerTag = "+cue-gen-param"
 )
 
 var (
@@ -34,21 +35,36 @@ var (
 	_ crdutil.SchemaVisitor = &formatDescriptionVisitor{}
 	_ crdutil.SchemaVisitor = &applyKubebuilderMarkersVisitor{}
 	_ crdutil.SchemaVisitor = &intOrStringVisitor{}
+	_ crdutil.SchemaVisitor = &setRequiredFieldsVisitor{}
 )
 
 // a visitor to format field description to a schema
-type formatDescriptionVisitor struct{}
+type formatDescriptionVisitor struct {
+	maxDescriptionLength int
+}
 
 func (v *formatDescriptionVisitor) Visit(schema *apiextv1.JSONSchemaProps) crdutil.SchemaVisitor {
 	if schema == nil {
 		return v
 	}
 
-	schema.Description, _ = parseDescription(schema.Description)
+	var rawMarkers []string
+	schema.Description, rawMarkers = parseDescription(schema.Description)
 
 	if strings.HasPrefix(schema.Description, "$hide_from_docs") {
 		schema.Description = ""
+		return v
 	}
+
+	params := parseCueGenParameters(rawMarkers)
+
+	if param := params.Get(IstioPackageNameParameter); param != nil {
+		if res, ok := frontMatterMap[param.Value]; ok {
+			schema.Description = res[0] + " See more details at: " + res[1]
+			return v
+		}
+	}
+
 	if paras := strings.Split(schema.Description, ". "); len(paras) > 0 && paras[0] != "" {
 		schema.Description = paras[0]
 
@@ -69,6 +85,37 @@ func (v *formatDescriptionVisitor) Visit(schema *apiextv1.JSONSchemaProps) crdut
 		}
 	}
 
+	if v.maxDescriptionLength > 0 && len(schema.Description) > v.maxDescriptionLength {
+		schema.Description = schema.Description[0:v.maxDescriptionLength]
+	}
+
+	return v
+}
+
+// a visitor to set required fields to a schema
+type setRequiredFieldsVisitor struct{}
+
+func (v *setRequiredFieldsVisitor) Visit(schema *apiextv1.JSONSchemaProps) crdutil.SchemaVisitor {
+	if schema == nil {
+		return v
+	}
+
+	requiredFields := make([]string, 0)
+
+	for k, s := range schema.Properties {
+		rawMarkers := make([]string, 0)
+		_, rawMarkers = parseDescription(s.Description)
+		params := parseCueGenParameters(rawMarkers)
+		if params := params.GetAll(ProtoAttributeParameter); len(params) > 0 {
+			attrs := getProtoAttributes(params)
+			if v, ok := attrs["google.api.field_behavior"]; ok && v == "REQUIRED" {
+				requiredFields = append(requiredFields, k)
+			}
+		}
+	}
+
+	schema.Required = append(schema.Required, requiredFields...)
+
 	return v
 }
 
@@ -80,16 +127,34 @@ func (v *intOrStringVisitor) Visit(schema *apiextv1.JSONSchemaProps) crdutil.Sch
 		return v
 	}
 
-	_, intVal := schema.Properties["intVal"]
-	_, strVal := schema.Properties["strVal"]
+	var rawMarkers []string
+	_, rawMarkers = parseDescription(schema.Description)
 
-	if intVal && strVal {
+	params := parseCueGenParameters(rawMarkers)
+
+	isIntOrString := false
+	var pattern string
+
+	if params := params.GetAll(ProtoAttributeParameter); len(params) > 0 {
+		switch getProtoAttributes(params)["type"] {
+		case "k8s.io.apimachinery.pkg.util.intstr.IntOrString":
+			isIntOrString = true
+		case "k8s.io.apimachinery.pkg.api.resource.Quantity":
+			isIntOrString = true
+			pattern = "^(\\+|-)?(([0-9]+(\\.[0-9]*)?)|(\\.[0-9]+))(([KMGTPE]i)|[numkMGTPE]|([eE](\\+|-)?(([0-9]+(\\.[0-9]*)?)|(\\.[0-9]+))))?$"
+		}
+	}
+
+	if isIntOrString {
 		schema.Properties = nil
 		schema.Type = ""
 		schema.XIntOrString = true
 		schema.AnyOf = []apiextv1.JSONSchemaProps{
 			{Type: "integer"},
 			{Type: "string"},
+		}
+		if schema.Pattern == "" && pattern != "" {
+			schema.Pattern = pattern
 		}
 	}
 
@@ -175,29 +240,4 @@ func (v *preserveUnknownFieldVisitor) Visit(schema *apiextv1.JSONSchemaProps) cr
 		return &preserveUnknownFieldVisitor{path: strings.Join(p[1:], ".")}
 	}
 	return nil
-}
-
-func parseDescription(desc string) (string, []string) {
-	lines := strings.Split(desc, "\n")
-	outLines := []string{}
-	rawMarkers := []string{}
-	out := true
-	for _, l := range lines {
-		l = strings.Trim(l, " ")
-		if strings.HasPrefix(l, "<!--") {
-			out = false
-		}
-		if strings.HasPrefix(l, enableCRDGenTag) || strings.HasPrefix(l, kubebuilderMarkerTag) {
-			rawMarkers = append(rawMarkers, l)
-			continue
-		}
-		if out && l != "" {
-			outLines = append(outLines, l)
-		}
-		if !out && l == "-->" {
-			out = true
-		}
-	}
-
-	return strings.Join(outLines, "\n"), rawMarkers
 }
