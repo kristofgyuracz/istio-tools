@@ -99,6 +99,18 @@ func completeCRD(c *apiextv1.CustomResourceDefinition, versionSchemas map[string
 				if err = json.Unmarshal(o, status); err != nil {
 					log.Fatal("Cannot unmarshal raw status schema to JSONSchemaProps")
 				}
+
+				// run schema modifiers
+				for _, visitor := range []crdutil.SchemaVisitor{
+					&setRequiredFieldsVisitor{},
+					&applyKubebuilderMarkersVisitor{},
+					&intOrStringVisitor{},
+					&formatDescriptionVisitor{
+						maxDescriptionLength: crd.MaxDescriptionLength,
+					},
+				} {
+					crdutil.EditSchema(status, visitor)
+				}
 			}
 
 			version.Schema.OpenAPIV3Schema.Properties["status"] = *status
