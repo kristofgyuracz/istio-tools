@@ -40,7 +40,7 @@ var (
 
 // a visitor to format field description to a schema
 type formatDescriptionVisitor struct {
-	maxDescriptionLength int
+	maxDescriptionLength *int
 }
 
 func (v *formatDescriptionVisitor) Visit(schema *apiextv1.JSONSchemaProps) crdutil.SchemaVisitor {
@@ -85,8 +85,8 @@ func (v *formatDescriptionVisitor) Visit(schema *apiextv1.JSONSchemaProps) crdut
 		}
 	}
 
-	if v.maxDescriptionLength > 0 && len(schema.Description) > v.maxDescriptionLength {
-		schema.Description = schema.Description[0:v.maxDescriptionLength]
+	if v.maxDescriptionLength != nil && len(schema.Description) > *v.maxDescriptionLength {
+		schema.Description = schema.Description[0:*v.maxDescriptionLength]
 	}
 
 	return v

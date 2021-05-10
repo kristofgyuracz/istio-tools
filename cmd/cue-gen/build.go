@@ -92,7 +92,7 @@ type CrdGen struct {
 
 	Filename string // empty indicates the default prefix.
 
-	MaxDescriptionLength int // maximum description length of the fields.
+	MaxDescriptionLength *int // maximum description length of the fields.
 
 	// Mapping of CRD name and its output configuration.
 	CrdConfigs map[string]*CrdConfig
