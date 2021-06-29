@@ -16,6 +16,7 @@ package main
 
 import (
 	"log"
+	"sort"
 	"strings"
 
 	apiextv1 "k8s.io/apiextensions-apiserver/pkg/apis/apiextensions/v1"
@@ -36,6 +37,7 @@ var (
 	_ crdutil.SchemaVisitor = &applyKubebuilderMarkersVisitor{}
 	_ crdutil.SchemaVisitor = &intOrStringVisitor{}
 	_ crdutil.SchemaVisitor = &setRequiredFieldsVisitor{}
+	_ crdutil.SchemaVisitor = &inlinePropertiesVisitor{}
 )
 
 // a visitor to format field description to a schema
@@ -115,6 +117,7 @@ func (v *setRequiredFieldsVisitor) Visit(schema *apiextv1.JSONSchemaProps) crdut
 	}
 
 	schema.Required = append(schema.Required, requiredFields...)
+	sort.Strings(schema.Required)
 
 	return v
 }
@@ -133,6 +136,7 @@ func (v *intOrStringVisitor) Visit(schema *apiextv1.JSONSchemaProps) crdutil.Sch
 	params := parseCueGenParameters(rawMarkers)
 
 	isIntOrString := false
+	isIntOrStringMap := false
 	var pattern string
 
 	if params := params.GetAll(ProtoAttributeParameter); len(params) > 0 {
@@ -142,10 +146,14 @@ func (v *intOrStringVisitor) Visit(schema *apiextv1.JSONSchemaProps) crdutil.Sch
 		case "k8s.io.apimachinery.pkg.api.resource.Quantity":
 			isIntOrString = true
 			pattern = "^(\\+|-)?(([0-9]+(\\.[0-9]*)?)|(\\.[0-9]+))(([KMGTPE]i)|[numkMGTPE]|([eE](\\+|-)?(([0-9]+(\\.[0-9]*)?)|(\\.[0-9]+))))?$"
+		case "map<string,k8s.io.apimachinery.pkg.api.resource.Quantity>":
+			isIntOrStringMap = true
+			pattern = "^(\\+|-)?(([0-9]+(\\.[0-9]*)?)|(\\.[0-9]+))(([KMGTPE]i)|[numkMGTPE]|([eE](\\+|-)?(([0-9]+(\\.[0-9]*)?)|(\\.[0-9]+))))?$"
+
 		}
 	}
 
-	if isIntOrString {
+	modSchema := func(schema *apiextv1.JSONSchemaProps) {
 		schema.Properties = nil
 		schema.Type = ""
 		schema.XIntOrString = true
@@ -156,6 +164,12 @@ func (v *intOrStringVisitor) Visit(schema *apiextv1.JSONSchemaProps) crdutil.Sch
 		if schema.Pattern == "" && pattern != "" {
 			schema.Pattern = pattern
 		}
+	}
+
+	if isIntOrString {
+		modSchema(schema)
+	} else if isIntOrStringMap {
+		modSchema(schema.AdditionalProperties.Schema)
 	}
 
 	return v
@@ -240,4 +254,54 @@ func (v *preserveUnknownFieldVisitor) Visit(schema *apiextv1.JSONSchemaProps) cr
 		return &preserveUnknownFieldVisitor{path: strings.Join(p[1:], ".")}
 	}
 	return nil
+}
+
+// a visitor to move inline properties
+type inlinePropertiesVisitor struct {
+	found bool
+}
+
+func (v *inlinePropertiesVisitor) Visit(schema *apiextv1.JSONSchemaProps) crdutil.SchemaVisitor {
+	if schema == nil {
+		return v
+	}
+
+	if len(schema.Properties) > 0 {
+		props := make(map[string]apiextv1.JSONSchemaProps)
+		for k, s := range schema.Properties {
+			if v.isInline(s) {
+				v.found = true
+				for k1, v1 := range s.Properties {
+					props[k1] = v1
+				}
+				continue
+			}
+			props[k] = s
+		}
+
+		schema.Properties = props
+	}
+
+	return v
+}
+
+func (v *inlinePropertiesVisitor) IsInlineFound() bool {
+	return v.found
+}
+
+func (v *inlinePropertiesVisitor) Reset() {
+	v.found = false
+}
+
+func (v *inlinePropertiesVisitor) isInline(schema apiextv1.JSONSchemaProps) bool {
+	_, rawMarkers := parseDescription(schema.Description)
+	params := parseCueGenParameters(rawMarkers)
+	if params := params.GetAll(ProtoAttributeParameter); len(params) > 0 {
+		attrs := getProtoAttributes(params)
+		if val, ok := attrs["gogoproto.jsontag"]; ok && val == "\",inline\"" {
+			return true
+		}
+	}
+
+	return false
 }

@@ -5,7 +5,7 @@ go 1.15
 require (
 	cloud.google.com/go v0.66.0 // indirect
 	cloud.google.com/go/spanner v1.10.0
-	cuelang.org/go v0.0.16-0.20200320220106-76252f4b7486
+	cuelang.org/go v0.2.2
 	github.com/alcortesm/tgz v0.0.0-20161220082320-9c5fe88206d7 // indirect
 	github.com/anmitsu/go-shlex v0.0.0-20161002113705-648efa622239 // indirect
 	github.com/client9/gospell v0.0.0-20160306015952-90dfc71015df
@@ -60,3 +60,5 @@ require (
 	k8s.io/utils v0.0.0-20201110183641-67b214c5f920
 	sigs.k8s.io/controller-tools v0.4.1
 )
+
+replace cuelang.org/go => github.com/waynz0r/cue v0.2.3-0.20210629110240-49370731dc3c

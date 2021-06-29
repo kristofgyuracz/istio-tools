@@ -63,6 +63,16 @@ func completeCRD(c *apiextv1.CustomResourceDefinition, versionSchemas map[string
 			}
 		}
 
+		// move inline properties in a cycle until none found
+		iv := &inlinePropertiesVisitor{}
+		for {
+			iv.Reset()
+			crdutil.EditSchema(j, iv)
+			if !iv.IsInlineFound() {
+				break
+			}
+		}
+
 		// run schema modifiers
 		for _, visitor := range []crdutil.SchemaVisitor{
 			&setRequiredFieldsVisitor{},
@@ -98,6 +108,16 @@ func completeCRD(c *apiextv1.CustomResourceDefinition, versionSchemas map[string
 
 				if err = json.Unmarshal(o, status); err != nil {
 					log.Fatal("Cannot unmarshal raw status schema to JSONSchemaProps")
+				}
+
+				// move inline properties in a cycle until none found
+				iv := &inlinePropertiesVisitor{}
+				for {
+					iv.Reset()
+					crdutil.EditSchema(j, iv)
+					if !iv.IsInlineFound() {
+						break
+					}
 				}
 
 				// run schema modifiers
