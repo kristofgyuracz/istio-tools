@@ -140,6 +140,13 @@ func (v *intOrStringVisitor) Visit(schema *apiextv1.JSONSchemaProps) crdutil.Sch
 	var pattern string
 
 	if params := params.GetAll(ProtoAttributeParameter); len(params) > 0 {
+		switch strings.Trim(getProtoAttributes(params)["intorstring"], "\"") {
+		case "true":
+			isIntOrString = true
+		case "map":
+			isIntOrStringMap = true
+		}
+
 		switch getProtoAttributes(params)["type"] {
 		case "k8s.io.apimachinery.pkg.util.intstr.IntOrString":
 			isIntOrString = true
@@ -149,7 +156,6 @@ func (v *intOrStringVisitor) Visit(schema *apiextv1.JSONSchemaProps) crdutil.Sch
 		case "map<string,k8s.io.apimachinery.pkg.api.resource.Quantity>":
 			isIntOrStringMap = true
 			pattern = "^(\\+|-)?(([0-9]+(\\.[0-9]*)?)|(\\.[0-9]+))(([KMGTPE]i)|[numkMGTPE]|([eE](\\+|-)?(([0-9]+(\\.[0-9]*)?)|(\\.[0-9]+))))?$"
-
 		}
 	}
 
