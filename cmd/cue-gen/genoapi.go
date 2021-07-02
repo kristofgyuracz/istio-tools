@@ -492,7 +492,7 @@ func (x *builder) genOpenAPI(name string, inst *cue.Instance) (*openapi.OrderedM
 				}
 			}
 
-			attr := v.AttributeWithDelimiter("protobuf", '^')
+			attr := v.Attribute("protobuf")
 			for i := 0; i >= 0; i++ {
 				attrString, err := attr.String(i)
 				if err != nil {

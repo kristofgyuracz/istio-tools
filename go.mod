@@ -60,5 +60,3 @@ require (
 	k8s.io/utils v0.0.0-20201110183641-67b214c5f920
 	sigs.k8s.io/controller-tools v0.4.1
 )
-
-replace cuelang.org/go => github.com/waynz0r/cue v0.2.3-0.20210629110240-49370731dc3c
