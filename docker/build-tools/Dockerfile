@@ -25,7 +25,7 @@
 # Binary tools
 ################
 
-ARG GOLANG_IMAGE=golang:1.16.3
+ARG GOLANG_IMAGE=golang:1.16.6
 # hadolint ignore=DL3006
 FROM ${GOLANG_IMAGE} as binary_tools_context
 
@@ -33,14 +33,14 @@ FROM ${GOLANG_IMAGE} as binary_tools_context
 ARG ISTIO_TOOLS_SHA
 
 # Pinned versions of stuff we pull in
-ENV GCR_AUTH_VERSION=1.5.0
+ENV GCR_AUTH_VERSION=2.0.4
 ENV GO_BINDATA_VERSION=v3.1.2
 ENV GO_JUNIT_REPORT_VERSION=af01ea7f8024089b458d804d5cdf190f962a9a0c
 ENV GOCOVMERGE_VERSION=b5bfa59ec0adc420475f97f89b58045c721d761c
 ENV GOGO_PROTOBUF_VERSION=v1.3.2
 ENV GOIMPORTS_VERSION=v0.1.0
 ENV BENCHSTAT_VERSION=9c9101da8316
-ENV GH_VERSION=1.8.1
+ENV GH_VERSION=1.9.2
 ENV GOLANG_PROTOBUF_VERSION=v1.3.5
 ENV GOLANGCI_LINT_VERSION=v1.38.0
 ENV HADOLINT_VERSION=v1.22.1
@@ -65,7 +65,7 @@ ENV UPX_VERSION=3.96
 ENV YQ_VERSION=3.3.0
 ENV BUF_VERSION=v0.36.0
 ENV GCLOUD_VERSION=319.0.0
-ENV KUBETEST2_VERSION=358715462ab9d805a89b0ee4d15d7c69c9d712d7
+ENV KUBETEST2_VERSION=f4c453f4732bac11a186d89764024117f3860ec1
 ENV BOSKOSCTL_VERSION=c6d730e323f06da1b56dfa14bdab6d7d5dc22e2a
 
 ENV GO111MODULE=on
@@ -421,6 +421,15 @@ RUN apt-key add /tmp/docker-key
 RUN add-apt-repository "deb [arch=amd64] https://download.docker.com/linux/ubuntu bionic stable"
 RUN apt-get update
 RUN apt-get -y install --no-install-recommends docker-ce="${DOCKER_VERSION}" docker-ce-cli="${DOCKER_VERSION}" containerd.io="${CONTAINERD_VERSION}"
+
+# Trivy container scanner
+RUN apt-get install -y wget apt-transport-https gnupg lsb-release --no-install-recommends
+SHELL ["/bin/bash", "-o", "pipefail", "-c"]
+RUN wget -qO - https://aquasecurity.github.io/trivy-repo/deb/public.key | apt-key add -
+RUN echo deb "https://aquasecurity.github.io/trivy-repo/deb $(lsb_release -sc) main" | tee -a /etc/apt/sources.list.d/trivy.list
+SHELL ["/bin/bash", "+o", "pipefail", "-c"]
+RUN apt-get update
+RUN apt-get install -y trivy --no-install-recommends
 
 # Clean up stuff we don't need in the final image
 RUN rm -rf /var/lib/apt/lists/*
