@@ -72,6 +72,6 @@ func (this *ImportedReference) UnmarshalJSON(b []byte) error {
 }
 
 var (
-	TypesMarshaler   = &github_com_gogo_protobuf_jsonpb.Marshaler{}
+	TypesMarshaler   = &github_com_gogo_protobuf_jsonpb.Marshaler{Int64Uint64asIntegers: true}
 	TypesUnmarshaler = &github_com_gogo_protobuf_jsonpb.Unmarshaler{AllowUnknownFields: true}
 )

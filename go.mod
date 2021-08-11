@@ -1,4 +1,4 @@
-module github.com/waynz0r/istio-tools
+module istio.io/tools
 
 go 1.15
 

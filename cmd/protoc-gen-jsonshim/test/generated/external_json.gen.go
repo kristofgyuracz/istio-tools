@@ -39,6 +39,6 @@ func (this *ExternalSimple_ExternalNested) UnmarshalJSON(b []byte) error {
 }
 
 var (
-	ExternalMarshaler   = &github_com_gogo_protobuf_jsonpb.Marshaler{}
+	ExternalMarshaler   = &github_com_gogo_protobuf_jsonpb.Marshaler{Int64Uint64asIntegers: true}
 	ExternalUnmarshaler = &github_com_gogo_protobuf_jsonpb.Unmarshaler{AllowUnknownFields: true}
 )
