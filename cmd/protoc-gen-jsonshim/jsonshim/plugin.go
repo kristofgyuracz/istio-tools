@@ -105,7 +105,7 @@ func (p *Plugin) Generate(file *generator.FileDescriptor) {
 	// write out globals
 	p.P(`var (`)
 	p.In()
-	p.P(marshalerName, ` = &`, jsonpbPkg.Use(), `.Marshaler{}`)
+	p.P(marshalerName, ` = &`, jsonpbPkg.Use(), `.Marshaler{Int64Uint64asIntegers: true}`)
 	p.P(unmarshalerName, ` = &`, jsonpbPkg.Use(), `.Unmarshaler{AllowUnknownFields: true}`)
 	p.Out()
 	p.P(`)`)
