@@ -51,7 +51,7 @@ ENV JSONNET_VERSION=v0.15.0
 ENV JUNIT_MERGER_VERSION=adf1545b49509db1f83c49d1de90bbcb235642a8
 ENV K8S_CODE_GENERATOR_VERSION=1.18.16
 ENV K8S_TEST_INFRA_VERSION=eef25257e05a741d49759617b4cac054392efd58
-ENV KIND_VERSION=v0.10.0
+ENV KIND_VERSION=v0.11.1
 ENV KUBECTL_VERSION=1.20.4
 ENV PROTOC_GEN_GRPC_GATEWAY_VERSION=v1.8.6
 ENV PROTOC_GEN_SWAGGER_VERSION=v1.8.6
@@ -63,9 +63,10 @@ ENV SHELLCHECK_VERSION=v0.7.1
 ENV SU_EXEC_VERSION=0.2
 ENV UPX_VERSION=3.96
 ENV YQ_VERSION=3.3.0
+ENV KPT_VERSION=v0.39.3
 ENV BUF_VERSION=v0.36.0
-ENV GCLOUD_VERSION=319.0.0
-ENV KUBETEST2_VERSION=f4c453f4732bac11a186d89764024117f3860ec1
+ENV GCLOUD_VERSION=349.0.0
+ENV KUBETEST2_VERSION=ea531e01c2406c5064aea55fa76a62dbae6da6a1
 ENV BOSKOSCTL_VERSION=c6d730e323f06da1b56dfa14bdab6d7d5dc22e2a
 
 ENV GO111MODULE=on
@@ -235,11 +236,13 @@ WORKDIR /tmp/su-exec-${SU_EXEC_VERSION}
 RUN make
 RUN cp -a su-exec ${OUTDIR}/usr/bin
 
-# Install gcloud command line tool
+ADD https://github.com/GoogleContainerTools/kpt/releases/download/${KPT_VERSION}/kpt_linux_amd64 ${OUTDIR}/usr/bin/kpt
+RUN chmod 555 ${OUTDIR}/usr/bin/kpt
 
+# Install gcloud command line tool
 ADD https://dl.google.com/dl/cloudsdk/channels/rapid/downloads/google-cloud-sdk-${GCLOUD_VERSION}-linux-x86_64.tar.gz /tmp
 RUN tar -xzvf "/tmp/google-cloud-sdk-${GCLOUD_VERSION}-linux-x86_64.tar.gz" -C "${OUTDIR}/usr/local" && \
-    ${OUTDIR}/usr/local/google-cloud-sdk/bin/gcloud components install beta kpt --quiet && \
+    ${OUTDIR}/usr/local/google-cloud-sdk/bin/gcloud components install alpha beta --quiet && \
     rm -rf /usr/local/google-cloud-sdk/.install/.backup
 
 # Cleanup stuff we don't need in the final image
