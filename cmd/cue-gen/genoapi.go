@@ -453,7 +453,7 @@ func (x *builder) genCRD() {
 			}
 		}
 
-		completeCRD(v.CustomResourceDefinition, versionSchemas, statusSchemas, v.PreserveUnknownFields, x.Crd)
+		completeCRD(v.CustomResourceDefinition, versionSchemas, statusSchemas, v.PreserveUnknownFields, x.Crd, v.SpecIsRequired)
 	}
 
 	x.writeCRDFiles()

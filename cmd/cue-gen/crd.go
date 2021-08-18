@@ -42,7 +42,7 @@ status:
 
 // Build CRDs based on the configuration and schema.
 //nolint:staticcheck,interfacer,lll
-func completeCRD(c *apiextv1.CustomResourceDefinition, versionSchemas map[string]*openapi.OrderedMap, statusSchemas map[string]*openapi.OrderedMap, preserveUnknownFields map[string][]string, crd *CrdGen) {
+func completeCRD(c *apiextv1.CustomResourceDefinition, versionSchemas map[string]*openapi.OrderedMap, statusSchemas map[string]*openapi.OrderedMap, preserveUnknownFields map[string][]string, crd *CrdGen, isSpecRequired bool) {
 	for i, version := range c.Spec.Versions {
 
 		b, err := versionSchemas[version.Name].MarshalJSON()
@@ -91,6 +91,10 @@ func completeCRD(c *apiextv1.CustomResourceDefinition, versionSchemas map[string
 				"spec": *j,
 			},
 		}}
+
+		if isSpecRequired {
+			version.Schema.OpenAPIV3Schema.Required = []string{"spec"}
+		}
 
 		// only add status schema validation when status subresource is enabled in the CRD.
 		if version.Subresources != nil {

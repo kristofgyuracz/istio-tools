@@ -110,6 +110,9 @@ type CrdConfig struct {
 	// need to be marked as `x-kubernetes-preserve-unknown-fields`
 	PreserveUnknownFields map[string][]string
 
+	// Optional. Specifies wheter the spec is a required field.
+	SpecIsRequired bool
+
 	CustomResourceDefinition *apiext.CustomResourceDefinition
 }
 
@@ -468,6 +471,10 @@ func convertCrdConfig(c map[string]string, t string, cfg *CrdConfig) {
 	// store the fields to mark as preserved in the config
 	if f, ok := c["preserveUnknownFields"]; ok {
 		cfg.PreserveUnknownFields[version.Name] = strings.Split(f, ",")
+	}
+
+	if _, ok := c["specIsRequired"]; ok {
+		cfg.SpecIsRequired = true
 	}
 
 	src.Spec.Versions = append(src.Spec.Versions, version)
