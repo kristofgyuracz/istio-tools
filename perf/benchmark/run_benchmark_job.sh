@@ -154,7 +154,7 @@ trap exit_handling EXIT
 # Helper functions
 function collect_flame_graph() {
     FLAME_OUTPUT_DIR="${WD}/flame/flameoutput"
-    gsutil -q cp -r "${FLAME_OUTPUT_DIR}/*.svg" "gs://${GCS_BUCKET}/${OUTPUT_DIR}/flamegraphs"
+    gsutil -q cp -r "${FLAME_OUTPUT_DIR}/*.svg" "gs://${GCS_BUCKET}/${OUTPUT_DIR}/flamegraphs" || true
 }
 
 function collect_metrics() {
@@ -217,6 +217,9 @@ function collect_pod_spec() {
   kubectl get pods "${POD_NAME}" -n "${NAMESPACE}" -o yaml > "${POD_SPEC_NAME}"
   gsutil -q cp -r "${POD_SPEC_NAME}" "gs://${GCS_BUCKET}/${OUTPUT_DIR}/pod_spec/${POD_SPEC_NAME}"
 }
+
+# install tools for profiling
+apt-get update && apt-get -y install linux-tools-generic
 
 # Start run perf test
 echo "Start to run perf benchmark test, all collected data will be dumped to GCS bucket: ${GCS_BUCKET}/${OUTPUT_DIR}"

@@ -25,7 +25,7 @@ CONTAINER_CLI=${CONTAINER_CLI:-docker}
 CONTAINER_BUILDER=${CONTAINER_BUILDER:-"buildx build"}
 HUB=${HUB:-gcr.io/istio-testing}
 DATE=$(date +%Y-%m-%dT%H-%M-%S)
-BRANCH=release-1.10
+BRANCH=release-1.11
 VERSION="${BRANCH}-${DATE}"
 SHA="${BRANCH}"
 
@@ -36,12 +36,20 @@ if [[ "${JOB_TYPE:-}" == "postsubmit" ]]; then
   SHA=$(git rev-parse ${BRANCH})
 fi
 
+ADDITIONAL_BUILD_ARGS=
+# Allow overriding of the GOLANG_IMAGE by having it set in the environment
+if [[ -n "${GOLANG_IMAGE:-}" ]]; then
+  ADDITIONAL_BUILD_ARGS="--build-arg GOLANG_IMAGE=${GOLANG_IMAGE}"
+fi
+
 # shellcheck disable=SC2086
-${CONTAINER_CLI} ${CONTAINER_BUILDER}  --target build_tools --build-arg "ISTIO_TOOLS_SHA=${SHA}" --build-arg "VERSION=${VERSION}" -t "${HUB}/build-tools:${VERSION}" -t "${HUB}/build-tools:${BRANCH}-latest" .
+${CONTAINER_CLI} ${CONTAINER_BUILDER}  --target build_tools ${ADDITIONAL_BUILD_ARGS} --build-arg "ISTIO_TOOLS_SHA=${SHA}" --build-arg "VERSION=${VERSION}" -t "${HUB}/build-tools:${VERSION}" -t "${HUB}/build-tools:${BRANCH}-latest" .
 # shellcheck disable=SC2086
-${CONTAINER_CLI} ${CONTAINER_BUILDER}  --build-arg "ISTIO_TOOLS_SHA=${SHA}" --build-arg "VERSION=${VERSION}" -t "${HUB}/build-tools-proxy:${VERSION}" -t "${HUB}/build-tools-proxy:${BRANCH}-latest" .
+${CONTAINER_CLI} ${CONTAINER_BUILDER} ${ADDITIONAL_BUILD_ARGS} --build-arg "ISTIO_TOOLS_SHA=${SHA}" --build-arg "VERSION=${VERSION}" -t "${HUB}/build-tools-proxy:${VERSION}" -t "${HUB}/build-tools-proxy:${BRANCH}-latest" .
+if [[ "$(uname -m)" == "x86_64" ]]; then
 # shellcheck disable=SC2086
 ${CONTAINER_CLI} ${CONTAINER_BUILDER}  --build-arg "ISTIO_TOOLS_SHA=${SHA}" --build-arg "VERSION=${VERSION}" -t "${HUB}/build-tools-centos:${VERSION}" -t "${HUB}/build-tools-centos:${BRANCH}-latest" -f Dockerfile.centos .
+fi
 
 if [[ -z "${DRY_RUN:-}" ]]; then
   ${CONTAINER_CLI} push "${HUB}/build-tools:${VERSION}"

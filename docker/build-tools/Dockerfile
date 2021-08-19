@@ -25,9 +25,11 @@
 # Binary tools
 ################
 
-ARG GOLANG_IMAGE=golang:1.16.6
+ARG GOLANG_IMAGE=golang:1.16.7
 # hadolint ignore=DL3006
 FROM ${GOLANG_IMAGE} as binary_tools_context
+# TARGETARCH is an automatic platform ARG enabled by Docker BuildKit.
+ARG TARGETARCH
 
 # Istio tools SHA that we use for this image
 ARG ISTIO_TOOLS_SHA
@@ -40,8 +42,9 @@ ENV GOCOVMERGE_VERSION=b5bfa59ec0adc420475f97f89b58045c721d761c
 ENV GOGO_PROTOBUF_VERSION=v1.3.2
 ENV GOIMPORTS_VERSION=v0.1.0
 ENV BENCHSTAT_VERSION=9c9101da8316
-ENV GH_VERSION=1.9.2
+ENV GH_VERSION=1.12.1
 ENV GOLANG_PROTOBUF_VERSION=v1.3.5
+# When updating the golangci version, you may want to update the common-files config/.golangci* files as well.
 ENV GOLANGCI_LINT_VERSION=v1.38.0
 ENV HADOLINT_VERSION=v1.22.1
 ENV HELM3_VERSION=v3.4.2
@@ -50,12 +53,12 @@ ENV JB_VERSION=v0.3.1
 ENV JSONNET_VERSION=v0.15.0
 ENV JUNIT_MERGER_VERSION=adf1545b49509db1f83c49d1de90bbcb235642a8
 ENV K8S_CODE_GENERATOR_VERSION=1.18.16
-ENV K8S_TEST_INFRA_VERSION=eef25257e05a741d49759617b4cac054392efd58
+ENV K8S_TEST_INFRA_VERSION=ae26658abae0b1213549d1326b3b252422fe0215
 ENV KIND_VERSION=v0.11.1
 ENV KUBECTL_VERSION=1.20.4
 ENV PROTOC_GEN_GRPC_GATEWAY_VERSION=v1.8.6
 ENV PROTOC_GEN_SWAGGER_VERSION=v1.8.6
-ENV PROTOC_GEN_VALIDATE_VERSION=d6164de4910977d3c3c8dbd9299b5064ea9e7c2b
+ENV PROTOC_GEN_VALIDATE_VERSION=v0.6.1
 ENV PROTOC_VERSION=3.9.2
 ENV PROTOLOCK_VERSION=v0.14.0
 ENV PROTOTOOL_VERSION=v1.10.0
@@ -64,7 +67,7 @@ ENV SU_EXEC_VERSION=0.2
 ENV UPX_VERSION=3.96
 ENV YQ_VERSION=3.3.0
 ENV KPT_VERSION=v0.39.3
-ENV BUF_VERSION=v0.36.0
+ENV BUF_VERSION=v0.43.2
 ENV GCLOUD_VERSION=349.0.0
 ENV KUBETEST2_VERSION=ea531e01c2406c5064aea55fa76a62dbae6da6a1
 ENV BOSKOSCTL_VERSION=c6d730e323f06da1b56dfa14bdab6d7d5dc22e2a
@@ -92,17 +95,22 @@ RUN apt-get update && apt-get install -y --no-install-recommends \
     xz-utils
 
 # Install protoc
-ADD https://github.com/protocolbuffers/protobuf/releases/download/v${PROTOC_VERSION}/protoc-${PROTOC_VERSION}-linux-x86_64.zip /tmp/
-RUN unzip /tmp/protoc-${PROTOC_VERSION}-linux-x86_64.zip
-RUN mv /tmp/bin/protoc ${OUTDIR}/usr/bin
+RUN set -eux; \
+    \
+    case $(uname -m) in \
+        x86_64) export PROTOC_ZIP=protoc-${PROTOC_VERSION}-linux-x86_64.zip;; \
+        aarch64) export PROTOC_ZIP=protoc-${PROTOC_VERSION}-linux-aarch_64.zip;; \
+        *) echo "unsupported architecture"; exit 1 ;; \
+    esac; \
+    \
+    wget -O "/tmp/${PROTOC_ZIP}" "https://github.com/protocolbuffers/protobuf/releases/download/v${PROTOC_VERSION}/${PROTOC_ZIP}"; \
+    unzip "/tmp/${PROTOC_ZIP}"; \
+    mv /tmp/bin/protoc ${OUTDIR}/usr/bin
 
 # Install gh
-ADD https://github.com/cli/cli/releases/download/v${GH_VERSION}/gh_${GH_VERSION}_linux_amd64.deb /tmp/
-RUN dpkg -i /tmp/gh_${GH_VERSION}_linux_amd64.deb
+ADD https://github.com/cli/cli/releases/download/v${GH_VERSION}/gh_${GH_VERSION}_linux_${TARGETARCH}.deb /tmp/
+RUN dpkg -i /tmp/gh_${GH_VERSION}_linux_${TARGETARCH}.deb
 RUN mv /usr/bin/gh ${OUTDIR}/usr/bin
-
-RUN go install github.com/myitcv/gobin@v0.0.14
-RUN mv /tmp/go/bin/gobin /usr/local/go/bin
 
 # Build and install a bunch of Go tools
 RUN go install github.com/golang/protobuf/protoc-gen-go@${GOLANG_PROTOBUF_VERSION}
@@ -178,9 +186,9 @@ RUN git clone --depth 1 https://github.com/kubernetes-sigs/boskos --branch maste
   cd .. && rm -rf boskos
 
 # Compress the Go tools and put them in their final location
-ADD https://github.com/upx/upx/releases/download/v${UPX_VERSION}/upx-${UPX_VERSION}-amd64_linux.tar.xz /tmp
-RUN tar -xJf upx-${UPX_VERSION}-amd64_linux.tar.xz -C /tmp
-RUN mv /tmp/upx-${UPX_VERSION}-amd64_linux/upx /usr/bin
+ADD https://github.com/upx/upx/releases/download/v${UPX_VERSION}/upx-${UPX_VERSION}-${TARGETARCH}_linux.tar.xz /tmp
+RUN tar -xJf upx-${UPX_VERSION}-${TARGETARCH}_linux.tar.xz -C /tmp
+RUN mv /tmp/upx-${UPX_VERSION}-${TARGETARCH}_linux/upx /usr/bin
 RUN upx --lzma /tmp/go/bin/*
 RUN mv /tmp/go/bin/* ${OUTDIR}/usr/bin
 
@@ -192,8 +200,8 @@ ADD https://raw.githubusercontent.com/istio/tools/master/cmd/gen-release-notes/t
 RUN chmod -R 555 ${OUTDIR}/usr/share/gen-release-notes
 
 # ShellCheck linter
-ADD https://github.com/koalaman/shellcheck/releases/download/${SHELLCHECK_VERSION}/shellcheck-${SHELLCHECK_VERSION}.linux.x86_64.tar.xz /tmp
-RUN tar -xJf /tmp/shellcheck-${SHELLCHECK_VERSION}.linux.x86_64.tar.xz -C /tmp
+RUN wget -O "/tmp/shellcheck-${SHELLCHECK_VERSION}.linux.$(uname -m).tar.xz" "https://github.com/koalaman/shellcheck/releases/download/${SHELLCHECK_VERSION}/shellcheck-${SHELLCHECK_VERSION}.linux.$(uname -m).tar.xz"
+RUN tar -xJf "/tmp/shellcheck-${SHELLCHECK_VERSION}.linux.$(uname -m).tar.xz" -C /tmp
 RUN mv /tmp/shellcheck-${SHELLCHECK_VERSION}/shellcheck ${OUTDIR}/usr/bin
 
 # Hadolint linter
@@ -201,33 +209,41 @@ ADD https://github.com/hadolint/hadolint/releases/download/${HADOLINT_VERSION}/h
 RUN chmod 555 ${OUTDIR}/usr/bin/hadolint
 
 # Hugo static site generator
-ADD https://github.com/gohugoio/hugo/releases/download/v${HUGO_VERSION}/hugo_${HUGO_VERSION}_Linux-64bit.tar.gz /tmp
-RUN tar -xzvf /tmp/hugo_${HUGO_VERSION}_Linux-64bit.tar.gz -C /tmp
-RUN mv /tmp/hugo ${OUTDIR}/usr/bin
+RUN set -eux; \
+    \
+    case $(uname -m) in \
+        x86_64) export HUGO_TAR=hugo_${HUGO_VERSION}_Linux-64bit.tar.gz;; \
+        aarch64) export HUGO_TAR=hugo_${HUGO_VERSION}_Linux-ARM64.tar.gz;; \
+        *) echo "unsupported architecture"; exit 1 ;; \
+    esac; \
+    \
+    wget -O /tmp/${HUGO_TAR} https://github.com/gohugoio/hugo/releases/download/v${HUGO_VERSION}/${HUGO_TAR}; \
+    tar -xzvf /tmp/${HUGO_TAR} -C /tmp; \
+    mv /tmp/hugo ${OUTDIR}/usr/bin
 
 # Helm version 3
-ADD https://get.helm.sh/helm-${HELM3_VERSION}-linux-amd64.tar.gz /tmp
+ADD https://get.helm.sh/helm-${HELM3_VERSION}-linux-${TARGETARCH}.tar.gz /tmp
 RUN mkdir /tmp/helm3
-RUN tar -xf /tmp/helm-${HELM3_VERSION}-linux-amd64.tar.gz -C /tmp/helm3
-RUN cp /tmp/helm3/linux-amd64/helm ${OUTDIR}/usr/bin/helm3
-RUN mv /tmp/helm3/linux-amd64/helm ${OUTDIR}/usr/bin/helm
+RUN tar -xf /tmp/helm-${HELM3_VERSION}-linux-${TARGETARCH}.tar.gz -C /tmp/helm3
+RUN cp /tmp/helm3/linux-${TARGETARCH}/helm ${OUTDIR}/usr/bin/helm3
+RUN mv /tmp/helm3/linux-${TARGETARCH}/helm ${OUTDIR}/usr/bin/helm
 
 # yq doesn't support go modules, so install the binary instead
-ADD https://github.com/mikefarah/yq/releases/download/${YQ_VERSION}/yq_linux_amd64 /tmp
-RUN mv /tmp/yq_linux_amd64 ${OUTDIR}/usr/bin/yq
+ADD https://github.com/mikefarah/yq/releases/download/${YQ_VERSION}/yq_linux_${TARGETARCH} /tmp
+RUN mv /tmp/yq_linux_${TARGETARCH} ${OUTDIR}/usr/bin/yq
 RUN chmod 555 ${OUTDIR}/usr/bin/yq
 
 # Kubectl
-ADD https://storage.googleapis.com/kubernetes-release/release/v${KUBECTL_VERSION}/bin/linux/amd64/kubectl ${OUTDIR}/usr/bin/kubectl
+ADD https://storage.googleapis.com/kubernetes-release/release/v${KUBECTL_VERSION}/bin/linux/${TARGETARCH}/kubectl ${OUTDIR}/usr/bin/kubectl
 RUN chmod 555 ${OUTDIR}/usr/bin/kubectl
 
 # GCR docker credential helper
-ADD https://github.com/GoogleCloudPlatform/docker-credential-gcr/releases/download/v${GCR_AUTH_VERSION}/docker-credential-gcr_linux_amd64-${GCR_AUTH_VERSION}.tar.gz /tmp
-RUN tar -xzf /tmp/docker-credential-gcr_linux_amd64-${GCR_AUTH_VERSION}.tar.gz -C /tmp
+ADD https://github.com/GoogleCloudPlatform/docker-credential-gcr/releases/download/v${GCR_AUTH_VERSION}/docker-credential-gcr_linux_${TARGETARCH}-${GCR_AUTH_VERSION}.tar.gz /tmp
+RUN tar -xzf /tmp/docker-credential-gcr_linux_${TARGETARCH}-${GCR_AUTH_VERSION}.tar.gz -C /tmp
 RUN mv /tmp/docker-credential-gcr ${OUTDIR}/usr/bin
 
-ADD https://github.com/bufbuild/buf/releases/download/${BUF_VERSION}/buf-Linux-x86_64 ${OUTDIR}/usr/bin/buf
-RUN chmod 555 ${OUTDIR}/usr/bin/buf
+RUN wget -O "${OUTDIR}/usr/bin/buf" "https://github.com/bufbuild/buf/releases/download/${BUF_VERSION}/buf-Linux-$(uname -m)" && \
+    chmod 555 "${OUTDIR}/usr/bin/buf"
 
 # Install su-exec which is a tool that operates like sudo without the overhead
 ADD https://github.com/ncopa/su-exec/archive/v${SU_EXEC_VERSION}.tar.gz /tmp
@@ -236,13 +252,23 @@ WORKDIR /tmp/su-exec-${SU_EXEC_VERSION}
 RUN make
 RUN cp -a su-exec ${OUTDIR}/usr/bin
 
-ADD https://github.com/GoogleContainerTools/kpt/releases/download/${KPT_VERSION}/kpt_linux_amd64 ${OUTDIR}/usr/bin/kpt
+ADD https://github.com/GoogleContainerTools/kpt/releases/download/${KPT_VERSION}/kpt_linux_${TARGETARCH} ${OUTDIR}/usr/bin/kpt
 RUN chmod 555 ${OUTDIR}/usr/bin/kpt
 
 # Install gcloud command line tool
-ADD https://dl.google.com/dl/cloudsdk/channels/rapid/downloads/google-cloud-sdk-${GCLOUD_VERSION}-linux-x86_64.tar.gz /tmp
-RUN tar -xzvf "/tmp/google-cloud-sdk-${GCLOUD_VERSION}-linux-x86_64.tar.gz" -C "${OUTDIR}/usr/local" && \
-    ${OUTDIR}/usr/local/google-cloud-sdk/bin/gcloud components install alpha beta --quiet && \
+# Install gcloud beta component
+RUN set -eux; \
+    \
+    case $(uname -m) in \
+        x86_64)  export GCLOUD_TAR_FILE="google-cloud-sdk-${GCLOUD_VERSION}-linux-x86_64.tar.gz" ;; \
+        aarch64) export GCLOUD_TAR_FILE="google-cloud-sdk-${GCLOUD_VERSION}-linux-arm.tar.gz" ;; \
+        *) echo "unsupported architecture"; exit 1 ;; \
+    esac; \
+    \
+    wget "https://dl.google.com/dl/cloudsdk/channels/rapid/downloads/${GCLOUD_TAR_FILE}"; \
+    tar -xzvf ."/${GCLOUD_TAR_FILE}" -C "${OUTDIR}/usr/local" && rm "${GCLOUD_TAR_FILE}"; \
+    ${OUTDIR}/usr/local/google-cloud-sdk/bin/gcloud components install beta --quiet; \
+    ${OUTDIR}/usr/local/google-cloud-sdk/bin/gcloud components install alpha --quiet; \
     rm -rf /usr/local/google-cloud-sdk/.install/.backup
 
 # Cleanup stuff we don't need in the final image
@@ -256,7 +282,7 @@ RUN rm -fr /usr/local/go/bin/gofmt
 # Nodejs
 #############
 
-FROM ubuntu:bionic as nodejs_tools_context
+FROM ubuntu:focal as nodejs_tools_context
 
 # Pinned versions of stuff we pull in
 ENV BABEL_CLI_VERSION=v7.7.4
@@ -274,8 +300,17 @@ ENV SVGSTORE_CLI_VERSION=v1.3.1
 ENV TSLINT_VERSION=v5.20.0
 ENV TYPESCRIPT_VERSION=v3.7.2
 
-ADD https://nodejs.org/download/release/v${NODEJS_VERSION}/node-v${NODEJS_VERSION}-linux-x64.tar.gz /tmp
-RUN tar -xzf /tmp/node-v${NODEJS_VERSION}-linux-x64.tar.gz --strip-components=1 -C /usr/local
+RUN apt-get update && apt-get install -y --no-install-recommends \
+    wget ca-certificates
+
+RUN set -eux; \
+    case $(uname -m) in \
+        x86_64) export NODEJS_TAR=node-v${NODEJS_VERSION}-linux-x64.tar.gz;; \
+        aarch64) export NODEJS_TAR=node-v${NODEJS_VERSION}-linux-arm64.tar.gz;; \
+        *) echo "unsupported architecture"; exit 1 ;; \
+    esac; \
+    wget -O /tmp/${NODEJS_TAR} https://nodejs.org/download/release/v${NODEJS_VERSION}/${NODEJS_TAR}; \
+    tar -xzf /tmp/${NODEJS_TAR} --strip-components=1 -C /usr/local
 
 ADD https://nodejs.org/download/release/v${NODEJS_VERSION}/node-v${NODEJS_VERSION}-headers.tar.gz /tmp
 RUN tar -xzf /tmp/node-v${NODEJS_VERSION}-headers.tar.gz --strip-components=1 -C /usr/local
@@ -308,14 +343,16 @@ RUN rm -rf /usr/local/share
 # Ruby
 #############
 
-FROM ubuntu:bionic as ruby_tools_context
+FROM ubuntu:focal as ruby_tools_context
+
+ENV DEBIAN_FRONTEND=noninteractive
 
 # Pinned versions of stuff we pull in
-ENV AWESOMEBOT_VERSION=1.19.1
-ENV FPM_VERSION=1.11.0
-ENV HTMLPROOFER_VERSION=3.12.0
-ENV LICENSEE_VERSION=9.11.0
-ENV MDL_VERSION=0.5.0
+ENV AWESOMEBOT_VERSION=1.20.0
+ENV FPM_VERSION=1.12.0
+ENV HTMLPROOFER_VERSION=3.19.0
+ENV LICENSEE_VERSION=9.15.1
+ENV MDL_VERSION=0.11.0
 
 # hadolint ignore=DL3008
 RUN apt-get update && apt-get install -y --no-install-recommends \
@@ -329,11 +366,13 @@ RUN apt-get update && apt-get install -y --no-install-recommends \
     pkg-config \
     libssl-dev
 
-RUN add-apt-repository -y ppa:brightbox/ruby-ng-experimental
+# RUN add-apt-repository -y ppa:brightbox/ruby-ng-experimental
+# TODO revert when arm64 version ready https://groups.google.com/g/brightbox-ruby-ubuntu-packaging/c/8JLWIsW_DWc
+# ruby2.6 not in ubuntu officals
 # hadolint ignore=DL3008
 RUN apt-get update && apt-get install -y --no-install-recommends \
-    ruby2.6 \
-    ruby2.6-dev
+    ruby2.7 \
+    ruby2.7-dev
 
 # Install istio.io verification tools
 RUN gem install --no-wrappers --no-document mdl -v ${MDL_VERSION}
@@ -346,7 +385,9 @@ RUN gem install --no-wrappers --no-document fpm -v ${FPM_VERSION}
 # Python
 ##############
 
-FROM ubuntu:bionic as python_context
+FROM ubuntu:focal as python_context
+
+ENV DEBIAN_FRONTEND=noninteractive
 
 # Pinned versions of stuff we pull in
 ENV AUTOPEP8_VERSION=1.4.4
@@ -381,10 +422,13 @@ RUN python3 -m pip install --no-cache-dir jwcrypto==${JWCRYPTO_VERSION}
 # Base OS
 #############
 
-FROM ubuntu:bionic as base_os_context
+FROM ubuntu:focal as base_os_context
 
-ENV DOCKER_VERSION=5:20.10.0~3-0~ubuntu-bionic
+ENV DEBIAN_FRONTEND=noninteractive
+
+ENV DOCKER_VERSION=5:20.10.6~3-0~ubuntu-focal
 ENV CONTAINERD_VERSION=1.4.3-1
+ENV TRIVY_VERSION=0.18.3
 
 ENV OUTDIR=/out
 
@@ -416,23 +460,33 @@ RUN apt-get update && apt-get install -y --no-install-recommends \
     rpm \
     jq \
     gettext-base \
-    locales-all
+    locales-all \
+    file
 
 # Docker including docker-ce, docker-ce-cli, and containerd.io
 ADD https://download.docker.com/linux/ubuntu/gpg /tmp/docker-key
 RUN apt-key add /tmp/docker-key
-RUN add-apt-repository "deb [arch=amd64] https://download.docker.com/linux/ubuntu bionic stable"
+ARG TARGETARCH
+RUN add-apt-repository "deb [arch=${TARGETARCH}] https://download.docker.com/linux/ubuntu $(lsb_release -sc) stable"
 RUN apt-get update
 RUN apt-get -y install --no-install-recommends docker-ce="${DOCKER_VERSION}" docker-ce-cli="${DOCKER_VERSION}" containerd.io="${CONTAINERD_VERSION}"
 
 # Trivy container scanner
-RUN apt-get install -y wget apt-transport-https gnupg lsb-release --no-install-recommends
-SHELL ["/bin/bash", "-o", "pipefail", "-c"]
-RUN wget -qO - https://aquasecurity.github.io/trivy-repo/deb/public.key | apt-key add -
-RUN echo deb "https://aquasecurity.github.io/trivy-repo/deb $(lsb_release -sc) main" | tee -a /etc/apt/sources.list.d/trivy.list
-SHELL ["/bin/bash", "+o", "pipefail", "-c"]
-RUN apt-get update
-RUN apt-get install -y trivy --no-install-recommends
+RUN set -eux; \
+    \
+    case $(uname -m) in \
+        x86_64) \
+            export TRVIY_DEB_NAME="trivy_${TRIVY_VERSION}_Linux-64bit.deb"; \
+            ;; \
+        aarch64) \
+            export TRVIY_DEB_NAME="trivy_${TRIVY_VERSION}_Linux-ARM64.deb"; \
+            ;; \
+        *) echo "unsupported architecture"; exit 1 ;; \
+    esac; \
+    wget -O "/tmp/${TRVIY_DEB_NAME}" "https://github.com/aquasecurity/trivy/releases/download/v${TRIVY_VERSION}/${TRVIY_DEB_NAME}"; \
+    apt-get -y install --no-install-recommends -f "/tmp/${TRVIY_DEB_NAME}"; \
+    rm "/tmp/${TRVIY_DEB_NAME}";
+
 
 # Clean up stuff we don't need in the final image
 RUN rm -rf /var/lib/apt/lists/*
@@ -538,11 +592,15 @@ WORKDIR /
 
 ENTRYPOINT ["/usr/local/bin/docker-entrypoint"]
 
+
 ##############
 # Clang+LLVM
 ##############
 
-FROM ubuntu:xenial as clang_context
+FROM ubuntu:xenial AS clang_context_amd64
+FROM ubuntu:bionic AS clang_context_arm64
+# hadolint ignore=DL3006
+FROM clang_context_${TARGETARCH} AS clang_context
 
 # hadolint ignore=DL3008
 RUN apt-get update && apt-get install -y --no-install-recommends \
@@ -552,27 +610,69 @@ RUN apt-get update && apt-get install -y --no-install-recommends \
  && apt-get clean \
  && rm -rf /var/lib/apt/lists/*
 
-ENV LLVM_VERSION=10.0.1
-ENV LLVM_TARGET=x86_64-linux-gnu-ubuntu-16.04
+# 11.0.1 is the version support ubuntu:xenial & aarch64
+ENV LLVM_VERSION=11.0.1
 ENV LLVM_BASE_URL=https://github.com/llvm/llvm-project/releases/download/llvmorg-${LLVM_VERSION}
-ENV LLVM_ARCHIVE=clang+llvm-${LLVM_VERSION}-${LLVM_TARGET}
-ENV LLVM_URL=${LLVM_BASE_URL}/${LLVM_ARCHIVE}.tar.xz
 ENV LLVM_DIRECTORY=/usr/lib/llvm
 
-RUN wget ${LLVM_URL}
-RUN tar -xJf ${LLVM_ARCHIVE}.tar.xz -C /tmp
-RUN mkdir -p ${LLVM_DIRECTORY}
-RUN mv /tmp/${LLVM_ARCHIVE}/* ${LLVM_DIRECTORY}/
+RUN set -eux; \
+    \
+    case $(uname -m) in \
+        x86_64) export LLVM_ARCHIVE=clang+llvm-${LLVM_VERSION}-x86_64-linux-gnu-ubuntu-16.04;; \
+        aarch64) export LLVM_ARCHIVE=clang+llvm-${LLVM_VERSION}-aarch64-linux-gnu;; \
+        *) echo "unsupported architecture"; exit 1 ;; \
+    esac; \
+    \
+    wget ${LLVM_BASE_URL}/${LLVM_ARCHIVE}.tar.xz; \
+    tar -xJf ${LLVM_ARCHIVE}.tar.xz -C /tmp; \
+    mkdir -p ${LLVM_DIRECTORY}; \
+    mv /tmp/${LLVM_ARCHIVE}/* ${LLVM_DIRECTORY}/
+
+###########
+# GN
+###########
+
+FROM debian:buster AS gn_context
+
+RUN set -eux; \
+    \
+    apt-get update; \
+    apt-get install -qqy --no-install-recommends \
+        ca-certificates git \
+        clang python ninja-build \
+        libclang-dev libc++-dev \
+        ; \
+    rm -rf /var/lib/apt/lists/*
+
+WORKDIR /tmp
+RUN git clone https://gn.googlesource.com/gn;
+
+WORKDIR /tmp/gn
+
+RUN set -eux; \
+    \
+    git checkout 501b49a3; \
+    python build/gen.py; \
+    ninja -v -C out; \
+    out/gn_unittests; \
+    mkdir -p /gn; \
+    cp /tmp/gn/out/gn /gn/gn; \
+    /gn/gn --version;
 
 ###########
 # Bazel
 ###########
 
-FROM ubuntu:xenial as bazel_context
+FROM ubuntu:xenial AS bazel_context_amd64
+FROM ubuntu:bionic AS bazel_context_arm64
+# hadolint ignore=DL3006
+FROM bazel_context_${TARGETARCH} AS bazel_context
 
-ENV BAZELISK_VERSION="v1.0"
+ARG TARGETARCH
+
+ENV BAZELISK_VERSION="v1.9.0"
 ENV BAZELISK_BASE_URL="https://github.com/bazelbuild/bazelisk/releases/download"
-ENV BAZELISK_BIN="bazelisk-linux-amd64"
+ENV BAZELISK_BIN="bazelisk-linux-${TARGETARCH}"
 ENV BAZELISK_URL="${BAZELISK_BASE_URL}/${BAZELISK_VERSION}/${BAZELISK_BIN}"
 
 # hadolint ignore=DL3008
@@ -590,7 +690,12 @@ RUN mv ${BAZELISK_BIN} /usr/local/bin/bazel
 # Final image for proxy
 ########################
 
-FROM ubuntu:xenial
+FROM ubuntu:xenial AS build_env_proxy_amd64
+ENV UBUNTU_RELEASE_CODE_NAME=xenial
+FROM ubuntu:bionic AS build_env_proxy_arm64
+ENV UBUNTU_RELEASE_CODE_NAME=bionic
+# hadolint ignore=DL3006
+FROM build_env_proxy_${TARGETARCH}
 
 # Version from build arguments
 ARG VERSION
@@ -600,7 +705,7 @@ LABEL "io.istio.repo"="https://github.com/istio/tools"
 LABEL "io.istio.version"="${VERSION}"
 
 # Docker
-ENV DOCKER_VERSION=5:20.10.0~3-0~ubuntu-xenial
+ENV DOCKER_VERSION=5:20.10.6~3-0~ubuntu-${UBUNTU_RELEASE_CODE_NAME}
 ENV CONTAINERD_VERSION=1.4.3-1
 
 # General
@@ -654,7 +759,8 @@ RUN apt-get update && apt-get install -y --no-install-recommends \
 # Docker including docker-ce, docker-ce-cli, and containerd.io
 ADD https://download.docker.com/linux/ubuntu/gpg /tmp/docker-key
 RUN apt-key add /tmp/docker-key
-RUN add-apt-repository "deb [arch=amd64] https://download.docker.com/linux/ubuntu xenial stable"
+ARG TARGETARCH
+RUN add-apt-repository "deb [arch=${TARGETARCH}] https://download.docker.com/linux/ubuntu ${UBUNTU_RELEASE_CODE_NAME} stable"
 RUN apt-get update && apt-get -y install --no-install-recommends \
     docker-ce="${DOCKER_VERSION}" \
     docker-ce-cli="${DOCKER_VERSION}" \
@@ -668,8 +774,16 @@ RUN chmod +x /usr/local/bin/entrypoint
 
 # CMake
 SHELL ["/bin/bash", "-o", "pipefail", "-c"]
-RUN curl -fsSL https://apt.kitware.com/keys/kitware-archive-latest.asc | apt-key add -
-RUN apt-add-repository "deb https://apt.kitware.com/ubuntu/ $(lsb_release -cs) main"
+# ubuntu 18.04 without arm64 version see https://apt.kitware.com/
+RUN set -eux; \
+    \
+    case $(uname -m) in \
+        x86_64) \
+            curl -fsSL https://apt.kitware.com/keys/kitware-archive-latest.asc | apt-key add - ; \
+            apt-add-repository "deb https://apt.kitware.com/ubuntu/ ${UBUNTU_RELEASE_CODE_NAME} main"; \
+            ;; \
+        *) echo "skip" ;; \
+    esac;
 
 # binary dependencies to build envoy at v1.12.0
 # https://github.com/envoyproxy/envoy/blob/v1.12.0/bazel/README.md
@@ -688,6 +802,7 @@ RUN apt-get update && apt-get install -y --no-install-recommends \
 
 COPY --from=binary_tools_context /out/ /
 COPY --from=binary_tools_context /usr/local/go /usr/local/go
+COPY --from=gn_context /gn/gn /usr/local/bin/gn
 COPY --from=bazel_context /usr/local/bin /usr/local/bin
 COPY --from=clang_context ${LLVM_DIRECTORY}/lib ${LLVM_DIRECTORY}/lib
 COPY --from=clang_context ${LLVM_DIRECTORY}/bin ${LLVM_DIRECTORY}/bin
@@ -698,6 +813,9 @@ RUN ldconfig
 
 COPY proxy-tsan-instrumented-libcxx.sh proxy-tsan-instrumented-libcxx.sh
 RUN ./proxy-tsan-instrumented-libcxx.sh
+
+COPY install-python-3.8.sh install-python-3.8.sh
+RUN ./install-python-3.8.sh
 
 # su-exec is used in place of complex sudo setup operations
 RUN chmod u+sx /usr/bin/su-exec

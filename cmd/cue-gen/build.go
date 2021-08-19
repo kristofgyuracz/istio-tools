@@ -117,13 +117,13 @@ type CrdConfig struct {
 }
 
 func loadConfig(filename string) (c *Config, err error) {
-	r := &cue.Runtime{}
+	r := &cue.Runtime{} //nolint:staticcheck
 
 	f, err := docCueBytes()
 	if err != nil {
 		return nil, err
 	}
-	inst, err := r.Compile("doc.cue", f)
+	inst, err := r.Compile("doc.cue", f) //nolint:staticcheck
 	if err != nil {
 		log.Fatal(err)
 	}
@@ -132,7 +132,7 @@ func loadConfig(filename string) (c *Config, err error) {
 
 	switch filepath.Ext(filename) {
 	case ".cue", ".json":
-		cfg, err = r.Compile(filename, nil)
+		cfg, err = r.Compile(filename, nil) //nolint:staticcheck
 	case ".yaml", ".yml":
 		cfg, err = yaml.Decode(r, filename, nil)
 	}
