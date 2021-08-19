@@ -5,7 +5,7 @@ go 1.15
 require (
 	cloud.google.com/go v0.66.0 // indirect
 	cloud.google.com/go/spanner v1.10.0
-	cuelang.org/go v0.4.0
+	cuelang.org/go v0.2.2
 	github.com/alcortesm/tgz v0.0.0-20161220082320-9c5fe88206d7 // indirect
 	github.com/anmitsu/go-shlex v0.0.0-20161002113705-648efa622239 // indirect
 	github.com/client9/gospell v0.0.0-20160306015952-90dfc71015df
