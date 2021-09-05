@@ -113,6 +113,9 @@ type CrdConfig struct {
 	// Optional. Specifies wheter the spec is a required field.
 	SpecIsRequired bool
 
+	// Optional. Other names for the CRD to duplicate with.
+	Aliases []string
+
 	CustomResourceDefinition *apiext.CustomResourceDefinition
 }
 
@@ -475,6 +478,10 @@ func convertCrdConfig(c map[string]string, t string, cfg *CrdConfig) {
 
 	if _, ok := c["specIsRequired"]; ok {
 		cfg.SpecIsRequired = true
+	}
+
+	if f, ok := c["aliases"]; ok {
+		cfg.Aliases = strings.Split(f, ",")
 	}
 
 	src.Spec.Versions = append(src.Spec.Versions, version)

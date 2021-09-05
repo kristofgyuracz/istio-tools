@@ -110,6 +110,7 @@ import (
 	"github.com/emicklei/proto"
 	"github.com/getkin/kin-openapi/openapi3"
 	"github.com/ghodss/yaml"
+	apiext "k8s.io/apiextensions-apiserver/pkg/apis/apiextensions/v1"
 )
 
 // TODO: CUE deprecates OrderedMap. We should start using ast.File and other APIs in the
@@ -753,24 +754,53 @@ func (x *builder) writeCRDFiles() {
 	sort.Strings(keyList)
 
 	for _, k := range keyList {
-		y, err := yaml.Marshal(x.Crd.CrdConfigs[k].CustomResourceDefinition)
-		if err != nil {
-			log.Fatalf("Error marsahling CRD to yaml: %v", err)
-		}
+		crd := x.Crd.CrdConfigs[k].CustomResourceDefinition
+		x.writeToFile(out, x.getCRDYaml(crd))
 
-		// remove the status and creationTimestamp fields from the output. Ideally we could use OrderedMap to remove those.
-		y = bytes.ReplaceAll(y, []byte(statusOutput), []byte(""))
-		y = bytes.ReplaceAll(y, []byte(creationTimestampOutput), []byte(""))
-		// keep the quotes in the output which is required by helm.
-		y = bytes.ReplaceAll(y, []byte("helm.sh/resource-policy: keep"), []byte(`"helm.sh/resource-policy": keep`))
-		n, err := out.Write(append(y, []byte("\n---\n")...))
-		if err != nil {
-			log.Fatalf("Error writing to yaml file: %v", err)
-		}
-		if n < len(y) {
-			log.Fatalf("Error writing to yaml file: %v", io.ErrShortWrite)
+		for _, alias := range x.Crd.CrdConfigs[k].Aliases {
+			plural := strings.ToLower(alias) + "s"
+			b := strings.Index(alias, "(")
+			e := strings.Index(alias, ")")
+			if b > 0 && e > 0 && b < e {
+				plural = strings.ToLower(alias[0:b]) + alias[b+1:e]
+				alias = alias[0:b]
+			}
+			crd := crd.DeepCopy()
+			crd.Spec.Names = apiext.CustomResourceDefinitionNames{
+				Kind:     alias,
+				ListKind: alias + "List",
+				Singular: strings.ToLower(alias),
+				Plural:   plural,
+			}
+			crd.Name = fmt.Sprintf("%v.%v", crd.Spec.Names.Plural, crd.Spec.Group)
+			x.writeToFile(out, x.getCRDYaml(crd))
 		}
 	}
+}
+
+func (x *builder) writeToFile(out *os.File, y []byte) {
+	n, err := out.Write(append(y, []byte("\n---\n")...))
+	if err != nil {
+		log.Fatalf("Error writing to yaml file: %v", err)
+	}
+	if n < len(y) {
+		log.Fatalf("Error writing to yaml file: %v", io.ErrShortWrite)
+	}
+}
+
+func (x *builder) getCRDYaml(crd *apiext.CustomResourceDefinition) []byte {
+	y, err := yaml.Marshal(crd)
+	if err != nil {
+		log.Fatalf("Could not marshal CRD to yaml: %v", err)
+	}
+
+	// remove the status and creationTimestamp fields from the output. Ideally we could use OrderedMap to remove those.
+	y = bytes.ReplaceAll(y, []byte(statusOutput), []byte(""))
+	y = bytes.ReplaceAll(y, []byte(creationTimestampOutput), []byte(""))
+	// keep the quotes in the output which is required by helm.
+	y = bytes.ReplaceAll(y, []byte("helm.sh/resource-policy: keep"), []byte(`"helm.sh/resource-policy": keep`))
+
+	return y
 }
 
 type marker struct {
