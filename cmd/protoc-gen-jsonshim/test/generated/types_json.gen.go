@@ -6,8 +6,8 @@ package generated
 import (
 	bytes "bytes"
 	fmt "fmt"
-	github_com_gogo_protobuf_jsonpb "github.com/gogo/protobuf/jsonpb"
-	proto "github.com/gogo/protobuf/proto"
+	github_com_waynz0r_protobuf_jsonpb "github.com/waynz0r/protobuf/jsonpb"
+	proto "github.com/waynz0r/protobuf/proto"
 	math "math"
 )
 
@@ -72,6 +72,6 @@ func (this *ImportedReference) UnmarshalJSON(b []byte) error {
 }
 
 var (
-	TypesMarshaler   = &github_com_gogo_protobuf_jsonpb.Marshaler{Int64Uint64asIntegers: true}
-	TypesUnmarshaler = &github_com_gogo_protobuf_jsonpb.Unmarshaler{AllowUnknownFields: true}
+	TypesMarshaler   = &github_com_waynz0r_protobuf_jsonpb.Marshaler{Int64Uint64asIntegers: true}
+	TypesUnmarshaler = &github_com_waynz0r_protobuf_jsonpb.Unmarshaler{AllowUnknownFields: true}
 )

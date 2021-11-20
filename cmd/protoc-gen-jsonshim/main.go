@@ -15,7 +15,7 @@
 package main
 
 import (
-	"github.com/gogo/protobuf/vanity/command"
+	"github.com/waynz0r/protobuf/vanity/command"
 
 	"istio.io/tools/cmd/protoc-gen-jsonshim/jsonshim"
 )

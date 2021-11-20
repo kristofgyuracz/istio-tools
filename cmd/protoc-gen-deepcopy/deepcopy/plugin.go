@@ -18,8 +18,8 @@ import (
 	"path"
 	"strings"
 
-	"github.com/gogo/protobuf/gogoproto"
-	"github.com/gogo/protobuf/protoc-gen-gogo/generator"
+	"github.com/waynz0r/protobuf/gogoproto"
+	"github.com/waynz0r/protobuf/protoc-gen-gogo/generator"
 )
 
 func init() {
@@ -60,7 +60,7 @@ func (p *Plugin) Generate(file *generator.FileDescriptor) {
 
 	// imported packages
 	// XXX: proto is imported by default
-	// protoPkg := p.NewImport("github.com/gogo/protobuf/proto")
+	// protoPkg := p.NewImport("github.com/waynz0r/protobuf/proto")
 
 	wroteMarshalers := false
 

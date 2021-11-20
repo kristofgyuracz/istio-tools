@@ -18,8 +18,8 @@ import (
 	"path"
 	"strings"
 
-	"github.com/gogo/protobuf/gogoproto"
-	"github.com/gogo/protobuf/protoc-gen-gogo/generator"
+	"github.com/waynz0r/protobuf/gogoproto"
+	"github.com/waynz0r/protobuf/protoc-gen-gogo/generator"
 )
 
 func init() {
@@ -60,7 +60,7 @@ func (p *Plugin) Generate(file *generator.FileDescriptor) {
 
 	// imported packages
 	bytesPkg := p.NewImport("bytes")
-	jsonpbPkg := p.NewImport("github.com/gogo/protobuf/jsonpb")
+	jsonpbPkg := p.NewImport("github.com/waynz0r/protobuf/jsonpb")
 
 	wroteMarshalers := false
 	marshalerName := generator.FileName(file) + "Marshaler"

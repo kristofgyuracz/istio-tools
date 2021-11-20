@@ -6,8 +6,8 @@ package generated
 import (
 	bytes "bytes"
 	fmt "fmt"
-	github_com_gogo_protobuf_jsonpb "github.com/gogo/protobuf/jsonpb"
-	proto "github.com/gogo/protobuf/proto"
+	github_com_waynz0r_protobuf_jsonpb "github.com/waynz0r/protobuf/jsonpb"
+	proto "github.com/waynz0r/protobuf/proto"
 	math "math"
 )
 
@@ -39,6 +39,6 @@ func (this *ExternalSimple_ExternalNested) UnmarshalJSON(b []byte) error {
 }
 
 var (
-	ExternalMarshaler   = &github_com_gogo_protobuf_jsonpb.Marshaler{Int64Uint64asIntegers: true}
-	ExternalUnmarshaler = &github_com_gogo_protobuf_jsonpb.Unmarshaler{AllowUnknownFields: true}
+	ExternalMarshaler   = &github_com_waynz0r_protobuf_jsonpb.Marshaler{Int64Uint64asIntegers: true}
+	ExternalUnmarshaler = &github_com_waynz0r_protobuf_jsonpb.Unmarshaler{AllowUnknownFields: true}
 )

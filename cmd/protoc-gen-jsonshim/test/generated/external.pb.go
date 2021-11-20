@@ -5,7 +5,7 @@ package generated
 
 import (
 	fmt "fmt"
-	proto "github.com/gogo/protobuf/proto"
+	proto "github.com/waynz0r/protobuf/proto"
 	io "io"
 	math "math"
 	math_bits "math/bits"
