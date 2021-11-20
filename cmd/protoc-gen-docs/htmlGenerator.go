@@ -25,11 +25,11 @@ import (
 	"unicode"
 
 	"github.com/client9/gospell"
+	gogoproto "github.com/gogo/protobuf/proto"
 	"github.com/golang/protobuf/proto"
 	"github.com/golang/protobuf/protoc-gen-go/descriptor"
 	plugin "github.com/golang/protobuf/protoc-gen-go/plugin"
 	"github.com/russross/blackfriday/v2"
-	gogoproto "github.com/waynz0r/protobuf/proto"
 	gogodescriptor "github.com/waynz0r/protobuf/protoc-gen-gogo/descriptor"
 
 	googleapi "istio.io/gogo-genproto/googleapis/google/api"
