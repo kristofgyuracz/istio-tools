@@ -20,8 +20,8 @@ import (
 	"reflect"
 	"testing"
 
-	"github.com/waynz0r/protobuf/jsonpb"
-	"github.com/waynz0r/protobuf/proto"
+	"github.com/gogo/protobuf/jsonpb"
+	"github.com/gogo/protobuf/proto"
 
 	"istio.io/tools/cmd/protoc-gen-jsonshim/test/generated"
 )

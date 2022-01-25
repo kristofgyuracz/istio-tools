@@ -17,7 +17,7 @@ package test
 import (
 	"testing"
 
-	"github.com/waynz0r/protobuf/proto"
+	"github.com/gogo/protobuf/proto"
 
 	"istio.io/tools/cmd/protoc-gen-deepcopy/test/generated"
 )
