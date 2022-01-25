@@ -50,46 +50,7 @@ func (v *formatDescriptionVisitor) Visit(schema *apiextv1.JSONSchemaProps) crdut
 		return v
 	}
 
-	var rawMarkers []string
-	schema.Description, rawMarkers = parseDescription(schema.Description)
-
-	if strings.HasPrefix(schema.Description, "$hide_from_docs") {
-		schema.Description = ""
-		return v
-	}
-
-	params := parseCueGenParameters(rawMarkers)
-
-	if param := params.Get(IstioPackageNameParameter); param != nil {
-		if res, ok := frontMatterMap[param.Value]; ok {
-			schema.Description = res[0] + " See more details at: " + res[1]
-			return v
-		}
-	}
-
-	if paras := strings.Split(schema.Description, ". "); len(paras) > 0 && paras[0] != "" {
-		schema.Description = paras[0]
-
-		lines := strings.Split(paras[0], "\n")
-		if len(lines) > 0 {
-			descLines := []string{}
-			for _, line := range lines {
-				descLines = append(descLines, line)
-				if line[len(line)-1] == '.' {
-					break
-				}
-			}
-			schema.Description = strings.Join(descLines, "\n")
-		}
-
-		if schema.Description[len(schema.Description)-1] != '.' {
-			schema.Description = schema.Description + "."
-		}
-	}
-
-	if v.maxDescriptionLength != nil && len(schema.Description) > *v.maxDescriptionLength {
-		schema.Description = schema.Description[0:*v.maxDescriptionLength]
-	}
+	schema.Description = formatDescription(schema.Description, v.maxDescriptionLength, true)
 
 	return v
 }
@@ -140,6 +101,12 @@ func (v *intOrStringVisitor) Visit(schema *apiextv1.JSONSchemaProps) crdutil.Sch
 	var pattern string
 
 	if params := params.GetAll(ProtoAttributeParameter); len(params) > 0 {
+		switch strings.Trim(getProtoAttributes(params)["options.intorstring"], "\"") {
+		case "true":
+			isIntOrString = true
+		case "map":
+			isIntOrStringMap = true
+		}
 		switch strings.Trim(getProtoAttributes(params)["intorstring"], "\"") {
 		case "true":
 			isIntOrString = true
@@ -310,4 +277,48 @@ func (v *inlinePropertiesVisitor) isInline(schema apiextv1.JSONSchemaProps) bool
 	}
 
 	return false
+}
+
+func formatDescription(description string, maxLength *int, firstParagraphOnly bool) string {
+	var rawMarkers []string
+	description, rawMarkers = parseDescription(description)
+
+	if strings.HasPrefix(description, "$hide_from_docs") {
+		return ""
+	}
+
+	params := parseCueGenParameters(rawMarkers)
+
+	if param := params.Get(IstioPackageNameParameter); param != nil {
+		if res, ok := frontMatterMap[param.Value]; ok {
+			description = res[0] + " See more details at: " + res[1]
+			return description
+		}
+	}
+
+	if paras := strings.Split(description, ". "); firstParagraphOnly && len(paras) > 0 && paras[0] != "" {
+		description = paras[0]
+
+		lines := strings.Split(paras[0], "\n")
+		if len(lines) > 0 {
+			descLines := []string{}
+			for _, line := range lines {
+				descLines = append(descLines, line)
+				if line[len(line)-1] == '.' {
+					break
+				}
+			}
+			description = strings.Join(descLines, "\n")
+		}
+
+		if description[len(description)-1] != '.' {
+			description = description + "."
+		}
+	}
+
+	if maxLength != nil && len(description) > *maxLength {
+		description = description[0:*maxLength]
+	}
+
+	return description
 }

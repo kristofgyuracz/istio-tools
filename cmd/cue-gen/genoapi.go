@@ -178,7 +178,7 @@ func main() {
 		if split := bytes.Split(b, []byte("\n\n")); len(split) > 2 {
 			b = bytes.Join(split[2:], []byte("\n\n"))
 		}
-		fmt.Println(usage)
+		fmt.Print(usage)
 		flag.PrintDefaults()
 
 		fmt.Printf(helpTxt, b)
@@ -347,11 +347,41 @@ func (x *builder) gen(dir string, g *Grouping) {
 		fatal(err, "Error generating OpenAPI file")
 	}
 
+	x.editSchema(schemas,
+		schemaIntOrStringModifier,
+		schemaSetterModifier,
+	)
+
 	if g.Mode != allFiles {
 		x.filterOpenAPI(schemas, g)
 	}
 
 	x.writeOpenAPI(schemas, g)
+}
+
+func (x *builder) editSchema(schemas *openapi.OrderedMap, modifiers ...SchemaModifier) {
+	for k, v := range schemas.Pairs() {
+		for _, mf := range append(modifiers, schemaDescriptionModifier) {
+			mf(v, schemas, k)
+		}
+
+		if orderedMapSlice, ok := v.Value.([]*openapi.OrderedMap); ok {
+			for _, orderedMap := range orderedMapSlice {
+				x.editSchema(orderedMap, modifiers...)
+			}
+		}
+
+		if orderedMap, ok := v.Value.(*openapi.OrderedMap); ok {
+			for k, v := range orderedMap.Pairs() {
+				for _, mf := range append(modifiers, schemaDescriptionModifier) {
+					mf(v, orderedMap, k)
+				}
+				if vv, ok := v.Value.(*openapi.OrderedMap); ok {
+					x.editSchema(vv, modifiers...)
+				}
+			}
+		}
+	}
 }
 
 func (x *builder) genAll(g *Grouping) {
@@ -484,64 +514,43 @@ func (x *builder) genOpenAPI(name string, inst *cue.Instance) (*openapi.OrderedM
 	}
 
 	gen.DescriptionFunc = func(v cue.Value) string {
-		if *crd {
-			l, _ := v.Label()
+		l, _ := v.Label()
 
-			t := []string{
-				NewCueGenParameterMarker(ImportPathParameter, inst.ImportPath),
-				NewCueGenParameterMarker(PackageNameParameter, inst.PkgName),
-			}
-
-			if strings.HasPrefix(inst.ImportPath, "istio.io/api") {
-				n := strings.Split(inst.ImportPath, "/")
-				if len(n) > 3 {
-					istioPackage := "istio." + n[len(n)-2] + "." + n[len(n)-1] + "." + l
-					t = append(t, NewCueGenParameterMarker(IstioPackageNameParameter, istioPackage))
-				}
-			}
-
-			attr := v.Attribute("protobuf")
-			for i := 0; i >= 0; i++ {
-				attrString, err := attr.String(i)
-				if err != nil {
-					break
-				}
-				if p := strings.SplitN(attrString, "=", 2); len(p) == 2 {
-					p[0] = strings.Trim(strings.Trim(p[0], "("), ")")
-					t = append(t, NewCueGenParameterMarker(ProtoAttributeParameter, fmt.Sprintf("%s:%s", p[0], p[1])))
-				}
-			}
-
-			t = append(t, NewCueGenParameterMarker(FieldNameParameter, l))
-
-			if i, _ := v.Reference(); i != nil && i.ImportPath != "" {
-				t = append(t, NewCueGenParameterMarker(ReferenceImportPathParameter, i.ImportPath))
-			}
-
-			for _, doc := range v.Doc() {
-				t = append(t, doc.Text())
-			}
-			return strings.Join(t, "\n")
+		t := []string{
+			NewCueGenParameterMarker(ImportPathParameter, inst.ImportPath),
+			NewCueGenParameterMarker(PackageNameParameter, inst.PkgName),
 		}
+
+		if strings.HasPrefix(inst.ImportPath, "istio.io/api") {
+			n := strings.Split(inst.ImportPath, "/")
+			if len(n) > 3 {
+				istioPackage := "istio." + n[len(n)-2] + "." + n[len(n)-1] + "." + l
+				t = append(t, NewCueGenParameterMarker(IstioPackageNameParameter, istioPackage))
+			}
+		}
+
+		attr := v.Attribute("protobuf")
+		for i := 0; i >= 0; i++ {
+			attrString, err := attr.String(i)
+			if err != nil {
+				break
+			}
+			if p := strings.SplitN(attrString, "=", 2); len(p) == 2 {
+				p[0] = strings.Trim(strings.Trim(p[0], "("), ")")
+				t = append(t, NewCueGenParameterMarker(ProtoAttributeParameter, fmt.Sprintf("%s:%s", p[0], p[1])))
+			}
+		}
+
+		t = append(t, NewCueGenParameterMarker(FieldNameParameter, l))
+
+		if i, _ := v.Reference(); i != nil && i.ImportPath != "" {
+			t = append(t, NewCueGenParameterMarker(ReferenceImportPathParameter, i.ImportPath))
+		}
+
 		for _, doc := range v.Doc() {
-			if doc.Text() == "" {
-				continue
-			}
-			// Cut off first section, but don't stop if this ends with
-			// an example, list, or the like, as it will end weirdly.
-			// Also remove any protoc-gen-docs annotations at the beginning
-			// and any new-line.
-			split := strings.Split(doc.Text(), "\n\n")
-			k := 1
-			for ; k < len(split) && strings.HasSuffix(split[k-1], ":"); k++ {
-			}
-			s := strings.Fields(strings.Join(split[:k], "\n"))
-			for i := 0; i < len(s) && strings.HasPrefix(s[i], "$"); i++ {
-				s[i] = ""
-			}
-			return strings.Join(s, " ")
+			t = append(t, doc.Text())
 		}
-		return ""
+		return strings.Join(t, "\n")
 	}
 
 	if *crd {
