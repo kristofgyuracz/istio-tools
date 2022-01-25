@@ -365,19 +365,20 @@ func (x *builder) editSchema(schemas *openapi.OrderedMap, modifiers ...SchemaMod
 			mf(v, schemas, k)
 		}
 
-		if orderedMapSlice, ok := v.Value.([]*openapi.OrderedMap); ok {
-			for _, orderedMap := range orderedMapSlice {
-				x.editSchema(orderedMap, modifiers...)
-			}
-		}
-
 		if orderedMap, ok := v.Value.(*openapi.OrderedMap); ok {
 			for k, v := range orderedMap.Pairs() {
 				for _, mf := range append(modifiers, schemaDescriptionModifier) {
 					mf(v, orderedMap, k)
 				}
-				if vv, ok := v.Value.(*openapi.OrderedMap); ok {
-					x.editSchema(vv, modifiers...)
+
+				if om, ok := v.Value.(*openapi.OrderedMap); ok {
+					x.editSchema(om, modifiers...)
+				}
+
+				if orderedMapSlice, ok := v.Value.([]*openapi.OrderedMap); ok {
+					for _, orderedMap := range orderedMapSlice {
+						x.editSchema(orderedMap, modifiers...)
+					}
 				}
 			}
 		}
