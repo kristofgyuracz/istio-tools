@@ -20,9 +20,9 @@ import (
 	"fmt"
 	"text/template"
 
-	"istio.io/tools/isotope/convert/pkg/graph"
-	"istio.io/tools/isotope/convert/pkg/graph/script"
-	"istio.io/tools/isotope/convert/pkg/graph/svc"
+	"github.com/kristofgyuracz/istio-tools/isotope/convert/pkg/graph"
+	"github.com/kristofgyuracz/istio-tools/isotope/convert/pkg/graph/script"
+	"github.com/kristofgyuracz/istio-tools/isotope/convert/pkg/graph/svc"
 )
 
 // ServiceGraphToDotLanguage converts a ServiceGraph to a Graphviz DOT language

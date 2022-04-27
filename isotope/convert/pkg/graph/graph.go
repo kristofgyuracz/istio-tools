@@ -14,7 +14,7 @@
 
 package graph
 
-import "istio.io/tools/isotope/convert/pkg/graph/svc"
+import "github.com/kristofgyuracz/istio-tools/isotope/convert/pkg/graph/svc"
 
 // ServiceGraph describes a set of services which mock a service-oriented
 // architecture.

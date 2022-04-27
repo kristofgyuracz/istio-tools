@@ -17,7 +17,7 @@ package main
 import (
 	"github.com/gogo/protobuf/vanity/command"
 
-	"istio.io/tools/cmd/protoc-gen-deepcopy/deepcopy"
+	"github.com/kristofgyuracz/istio-tools/cmd/protoc-gen-deepcopy/deepcopy"
 )
 
 func main() {

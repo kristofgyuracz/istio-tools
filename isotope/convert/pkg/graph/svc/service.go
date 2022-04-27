@@ -15,10 +15,10 @@
 package svc
 
 import (
-	"istio.io/tools/isotope/convert/pkg/graph/pct"
-	"istio.io/tools/isotope/convert/pkg/graph/script"
-	"istio.io/tools/isotope/convert/pkg/graph/size"
-	"istio.io/tools/isotope/convert/pkg/graph/svctype"
+	"github.com/kristofgyuracz/istio-tools/isotope/convert/pkg/graph/pct"
+	"github.com/kristofgyuracz/istio-tools/isotope/convert/pkg/graph/script"
+	"github.com/kristofgyuracz/istio-tools/isotope/convert/pkg/graph/size"
+	"github.com/kristofgyuracz/istio-tools/isotope/convert/pkg/graph/svctype"
 )
 
 // Service describes a service in the service graph.

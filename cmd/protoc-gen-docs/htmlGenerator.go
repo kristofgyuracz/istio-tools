@@ -33,7 +33,7 @@ import (
 	"github.com/russross/blackfriday/v2"
 
 	googleapi "istio.io/gogo-genproto/googleapis/google/api"
-	"istio.io/tools/pkg/protomodel"
+	"github.com/kristofgyuracz/istio-tools/pkg/protomodel"
 )
 
 type outputMode int

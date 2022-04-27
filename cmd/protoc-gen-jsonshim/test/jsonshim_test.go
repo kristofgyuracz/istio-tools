@@ -23,7 +23,7 @@ import (
 	"github.com/gogo/protobuf/jsonpb"
 	"github.com/gogo/protobuf/proto"
 
-	"istio.io/tools/cmd/protoc-gen-jsonshim/test/generated"
+	"github.com/kristofgyuracz/istio-tools/cmd/protoc-gen-jsonshim/test/generated"
 )
 
 func TestSimpleCase(t *testing.T) {

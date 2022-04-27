@@ -18,7 +18,7 @@ import (
 	"encoding/json"
 	"errors"
 
-	"istio.io/tools/isotope/convert/pkg/graph/svctype"
+	"github.com/kristofgyuracz/istio-tools/isotope/convert/pkg/graph/svctype"
 )
 
 var (

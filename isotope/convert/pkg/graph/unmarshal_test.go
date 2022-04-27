@@ -20,10 +20,10 @@ import (
 	"testing"
 	"time"
 
-	"istio.io/tools/isotope/convert/pkg/graph/script"
-	"istio.io/tools/isotope/convert/pkg/graph/svc"
+	"github.com/kristofgyuracz/istio-tools/isotope/convert/pkg/graph/script"
+	"github.com/kristofgyuracz/istio-tools/isotope/convert/pkg/graph/svc"
 
-	"istio.io/tools/isotope/convert/pkg/graph/svctype"
+	"github.com/kristofgyuracz/istio-tools/isotope/convert/pkg/graph/svctype"
 )
 
 func TestServiceGraph_UnmarshalJSON(t *testing.T) {

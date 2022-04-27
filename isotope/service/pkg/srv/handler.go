@@ -20,9 +20,9 @@ import (
 
 	"istio.io/pkg/log"
 
-	"istio.io/tools/isotope/convert/pkg/graph/svc"
-	"istio.io/tools/isotope/convert/pkg/graph/svctype"
-	"istio.io/tools/isotope/service/pkg/srv/prometheus"
+	"github.com/kristofgyuracz/istio-tools/isotope/convert/pkg/graph/svc"
+	"github.com/kristofgyuracz/istio-tools/isotope/convert/pkg/graph/svctype"
+	"github.com/kristofgyuracz/istio-tools/isotope/service/pkg/srv/prometheus"
 )
 
 // Handler handles the default endpoint by emulating its Service.

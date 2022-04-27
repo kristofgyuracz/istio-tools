@@ -22,8 +22,8 @@ import (
 	"github.com/ghodss/yaml"
 	"github.com/spf13/cobra"
 
-	"istio.io/tools/isotope/convert/pkg/graph"
-	"istio.io/tools/isotope/convert/pkg/kubernetes"
+	"github.com/kristofgyuracz/istio-tools/isotope/convert/pkg/graph"
+	"github.com/kristofgyuracz/istio-tools/isotope/convert/pkg/kubernetes"
 )
 
 // kubernetesCmd represents the kubernetes command

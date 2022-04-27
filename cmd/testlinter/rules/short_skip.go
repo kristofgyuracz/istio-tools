@@ -19,7 +19,7 @@ import (
 	"go/token"
 	"strings"
 
-	"istio.io/tools/pkg/checker"
+	"github.com/kristofgyuracz/istio-tools/pkg/checker"
 )
 
 // ShortSkip requires that a test function should have one of these pattern.

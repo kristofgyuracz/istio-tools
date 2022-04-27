@@ -23,8 +23,8 @@ import (
 	"github.com/client9/gospell"
 	plugin "github.com/golang/protobuf/protoc-gen-go/plugin"
 
-	"istio.io/tools/pkg/protocgen"
-	"istio.io/tools/pkg/protomodel"
+	"github.com/kristofgyuracz/istio-tools/pkg/protocgen"
+	"github.com/kristofgyuracz/istio-tools/pkg/protomodel"
 )
 
 // Breaks the comma-separated list of key=value pairs

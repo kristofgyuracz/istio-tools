@@ -18,7 +18,7 @@ import (
 	"go/ast"
 	"go/token"
 
-	"istio.io/tools/pkg/checker"
+	"github.com/kristofgyuracz/istio-tools/pkg/checker"
 )
 
 // NoSleep requires that time.Sleep() is not allowed.

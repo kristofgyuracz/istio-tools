@@ -14,7 +14,7 @@
 
 package main
 
-import "istio.io/tools/isotope/convert/cmd"
+import "github.com/kristofgyuracz/istio-tools/isotope/convert/cmd"
 
 func main() {
 	cmd.Execute()

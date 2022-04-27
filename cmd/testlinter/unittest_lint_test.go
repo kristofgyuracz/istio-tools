@@ -19,8 +19,8 @@ import (
 	"reflect"
 	"testing"
 
-	"istio.io/tools/cmd/testlinter/rules"
-	"istio.io/tools/pkg/checker"
+	"github.com/kristofgyuracz/istio-tools/cmd/testlinter/rules"
+	"github.com/kristofgyuracz/istio-tools/pkg/checker"
 )
 
 func getAbsPath(path string) string {

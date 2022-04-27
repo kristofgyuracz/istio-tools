@@ -18,7 +18,7 @@ import (
 	"go/ast"
 	"go/token"
 
-	"istio.io/tools/pkg/checker"
+	"github.com/kristofgyuracz/istio-tools/pkg/checker"
 )
 
 // NoOsEnv flags an error if os.Getenv or os.LookupEnv are used.

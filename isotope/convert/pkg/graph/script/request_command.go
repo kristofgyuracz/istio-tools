@@ -18,7 +18,7 @@ import (
 	"encoding/json"
 	"errors"
 
-	"istio.io/tools/isotope/convert/pkg/graph/size"
+	"github.com/kristofgyuracz/istio-tools/isotope/convert/pkg/graph/size"
 )
 
 // RequestCommand describes a command to send an HTTP request to another

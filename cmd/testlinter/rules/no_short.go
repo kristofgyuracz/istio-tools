@@ -18,7 +18,7 @@ import (
 	"go/ast"
 	"go/token"
 
-	"istio.io/tools/pkg/checker"
+	"github.com/kristofgyuracz/istio-tools/pkg/checker"
 )
 
 // NoShort requires that testing.Short() is not allowed.

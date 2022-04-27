@@ -18,7 +18,7 @@ import (
 	"encoding/json"
 	"testing"
 
-	"istio.io/tools/isotope/convert/pkg/graph/svctype"
+	"github.com/kristofgyuracz/istio-tools/isotope/convert/pkg/graph/svctype"
 )
 
 func TestService_MarshalJSON(t *testing.T) {

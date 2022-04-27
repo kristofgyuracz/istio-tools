@@ -19,7 +19,7 @@ import (
 	"fmt"
 	"os"
 
-	"istio.io/tools/pkg/checker"
+	"github.com/kristofgyuracz/istio-tools/pkg/checker"
 )
 
 func main() {
